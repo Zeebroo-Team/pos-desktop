@@ -1,0 +1,70 @@
+<?php
+
+namespace Modules\Auth\Http\Controllers;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rules\Password;
+use Illuminate\View\View;
+use Modules\Auth\Services\AuthService;
+
+class AuthController extends Controller
+{
+    public function __construct(private readonly AuthService $authService)
+    {
+    }
+
+    public function showLogin(): View
+    {
+        return view('auth::auth.login');
+    }
+
+    public function showRegister(): View
+    {
+        return view('auth::auth.register');
+    }
+
+    public function login(Request $request): RedirectResponse
+    {
+        $credentials = $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string'],
+        ]);
+
+        if (! $this->authService->attemptLogin($credentials, $request->boolean('remember'))) {
+            return back()
+                ->withErrors(['email' => 'These credentials do not match our records.'])
+                ->onlyInput('email');
+        }
+
+        $request->session()->regenerate();
+
+        return redirect()->route('dashboard');
+    }
+
+    public function register(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', 'confirmed', Password::defaults()],
+            'role' => ['required', 'in:user,admin'],
+        ]);
+
+        $user = $this->authService->register($data);
+        $this->authService->loginUser($user);
+        $request->session()->regenerate();
+
+        return redirect()->route('dashboard');
+    }
+
+    public function logout(Request $request): RedirectResponse
+    {
+        $this->authService->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()->route('login.page');
+    }
+}
