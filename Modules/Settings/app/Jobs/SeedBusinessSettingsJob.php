@@ -8,6 +8,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Modules\Business\Models\Business;
+use Modules\Settings\Models\Setting;
 use Modules\Settings\Services\SettingsService;
 
 class SeedBusinessSettingsJob implements ShouldQueue
@@ -30,6 +31,15 @@ class SeedBusinessSettingsJob implements ShouldQueue
             return;
         }
 
-        $settingsService->setMany($business, $defaultBusinessSettings);
+        foreach ($defaultBusinessSettings as $key => $value) {
+            $exists = Setting::query()
+                ->where('scope_type', $business->getMorphClass())
+                ->where('scope_id', $business->getKey())
+                ->where('key', $key)
+                ->exists();
+            if (!$exists) {
+                $settingsService->set($business, (string) $key, $value);
+            }
+        }
     }
 }

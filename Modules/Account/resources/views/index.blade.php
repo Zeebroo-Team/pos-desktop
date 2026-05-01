@@ -17,7 +17,7 @@
                 <div style="font-weight:600;">{{ $account->account_name }}</div>
                 <div class="muted">Business: {{ $account->business?->name }}</div>
                 <div class="muted">{{ $account->bank?->name ?? $account->bank_name }} - {{ $account->bankType?->name }}</div>
-                <div class="muted">{{ $account->bank_account_number }} | {{ $account->branch }}</div>
+                <div class="muted">{{ $account->bank_account_number }} | {{ $account->branch }}@if($account->warehouse) · {{ $account->warehouse->name }} @endif</div>
                 <div class="muted">Balance: {{ number_format((float) $account->current_balance, 2) }}</div>
                 @if($account->bank_officer_contact)
                     <div class="muted">Officer: {{ $account->bank_officer_contact }}</div>

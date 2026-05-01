@@ -14,9 +14,9 @@
         .layout{min-height:100vh}
         .sidebar{
             width:260px;
-            background:var(--card);
+            background:linear-gradient(180deg,color-mix(in srgb,var(--card) 94%,#000),var(--card));
             border-right:1px solid var(--border);
-            box-shadow:2px 0 0 rgba(0,0,0,.06);
+            box-shadow:8px 0 24px rgba(0,0,0,.12);
             padding:24px 18px;
             position:fixed;
             left:0;
@@ -25,11 +25,20 @@
             z-index:30;
             overflow:auto;
         }
-        .brand{font-weight:700;font-size:20px;margin-bottom:22px}
-        .menu{display:flex;flex-direction:column;gap:8px}
-        .menu a{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid transparent;border-radius:10px;text-decoration:none;color:var(--text)}
-        .menu a.active,.menu a:hover{border-color:var(--border);background:color-mix(in srgb,var(--primary) 14%,transparent)}
+        .brand{font-weight:800;font-size:19px;letter-spacing:.2px;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+        .brand:before{content:"SB";width:28px;height:28px;display:grid;place-items:center;border-radius:8px;background:linear-gradient(135deg,var(--primary),color-mix(in srgb,var(--primary) 45%,#fff));color:#fff;font-size:11px;font-weight:800}
+        .menu-section{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin:4px 2px 2px}
+        .menu{display:flex;flex-direction:column;gap:6px}
+        .menu a{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid transparent;border-radius:10px;text-decoration:none;color:var(--text);font-weight:500;font-size:13px;transition:all .2s ease}
+        .menu a i{width:14px;text-align:center;color:var(--muted);font-size:12px}
+        .menu a.active{border-color:color-mix(in srgb,var(--primary) 45%,var(--border));background:color-mix(in srgb,var(--primary) 14%,transparent)}
+        .menu a:hover{border-color:color-mix(in srgb,var(--primary) 45%,var(--border));background:transparent;font-weight:700}
+        .menu a.active i,.menu a:hover i{color:var(--primary)}
+        .menu-group-title{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:12px;font-weight:600;background:color-mix(in srgb,var(--primary) 8%,transparent)}
+        .submenu{display:flex;flex-direction:column;gap:4px;margin-left:12px;padding-left:8px;border-left:1px dashed color-mix(in srgb,var(--primary) 35%,var(--border))}
+        .submenu a{padding:7px 9px;font-size:12px}
         .content{padding:0;margin-left:297px;min-height:100vh;border-left:1px solid var(--border)}
+        .content--minimal{margin-left:0;border-left:none;max-width:none;width:100%}
         .navbar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 28px;border-bottom:1px solid var(--border);background:var(--card);position:sticky;top:0;z-index:20}
         .navtitle{font-weight:700}
         .navmeta{color:var(--muted);font-size:14px}
@@ -97,18 +106,54 @@
 </head>
 <body>
 <div class="layout">
+    @php
+        $minimalAppShell = filter_var($minimalAppShell ?? false, FILTER_VALIDATE_BOOLEAN);
+        $navBusiness = \Modules\Business\Models\Business::currentForNavbar(auth()->user());
+        $navBusinesses = \Modules\Business\Models\Business::allForNavbar(auth()->user());
+        $showLoanManagement = (bool) $navBusiness;
+        $accounts = $navBusiness
+            ? \Modules\Account\Models\Account::with(['bankType', 'bank', 'warehouse'])
+                ->where('user_id', auth()->id())
+                ->where('business_id', $navBusiness->id)
+                ->latest()
+                ->get()
+            : collect();
+        $selectedAccountId = (int) session('selected_account_id');
+        $assignedAccount = $accounts->firstWhere('id', $selectedAccountId) ?: $accounts->first();
+        if ($assignedAccount && $selectedAccountId !== (int) $assignedAccount->id) {
+            session(['selected_account_id' => $assignedAccount->id]);
+        }
+        if (!$assignedAccount) {
+            session()->forget('selected_account_id');
+        }
+    @endphp
+    @unless($minimalAppShell)
     <aside class="sidebar">
         <div class="brand">SociBiz Panel</div>
         <nav class="menu">
+            <div class="menu-section">Main</div>
             <a href="{{ route('dashboard') }}" class="{{ request()->routeIs('dashboard') ? 'active' : '' }}"><i class="fa fa-gauge-high"></i><span>Overview</span></a>
-            <a href="{{ route('settings.user') }}" class="{{ request()->routeIs('settings.user') ? 'active' : '' }}"><i class="fa fa-user-gear"></i><span>User Settings</span></a>
-            <a href="{{ route('settings.business') }}" class="{{ request()->routeIs('settings.business') ? 'active' : '' }}"><i class="fa fa-briefcase"></i><span>Business Settings</span></a>
+            @if($showLoanManagement)
+                <a href="{{ route('account.loans.index') }}" class="{{ request()->routeIs('account.loans.*') ? 'active' : '' }}"><i class="fa fa-hand-holding-dollar"></i><span>Loan management</span></a>
+            @endif
+            @if($navBusiness && $navBusiness->multiWarehouseBranchEnabled())
+                <a href="{{ route('business.branches.index') }}" class="{{ request()->routeIs('business.branches.*') ? 'active' : '' }}"><i class="fa fa-code-branch"></i><span>Branches</span></a>
+            @endif
+            <div class="menu-section">Configuration</div>
+            <div class="menu-group-title">
+                <i class="fa fa-sliders"></i><span>Settings</span>
+            </div>
+            <div class="submenu">
+                <a href="{{ route('settings.business') }}" class="{{ request()->routeIs('settings.business') ? 'active' : '' }}"><i class="fa fa-briefcase"></i><span>Business Settings</span></a>
+                <a href="{{ route('settings.user') }}" class="{{ request()->routeIs('settings.user') ? 'active' : '' }}"><i class="fa fa-user-gear"></i><span>User Settings</span></a>
+            </div>
             @if(auth()->user()?->hasRole('admin'))
                 <a href="{{ route('admin.panel') }}" class="{{ request()->routeIs('admin.panel') ? 'active' : '' }}"><i class="fa fa-user-shield"></i><span>Admin Panel</span></a>
             @endif
         </nav>
     </aside>
-    <main class="content">
+    @endunless
+    <main class="content{{ $minimalAppShell ? ' content--minimal' : '' }}">
         <div class="navbar">
             <div>
                 <div class="navtitle">{{ $heading ?? 'Overview' }}</div>
@@ -116,43 +161,40 @@
             </div>
             <div class="nav-right">
                 <div class="navchip">{{ now()->format('d M Y') }}</div>
-                @php
-                    $business = auth()->user()?->businesses()->latest()->first();
-                    $accounts = $business
-                        ? \Modules\Account\Models\Account::with(['bankType', 'bank'])
-                            ->where('user_id', auth()->id())
-                            ->where('business_id', $business->id)
-                            ->latest()
-                            ->get()
-                        : collect();
-                    $selectedAccountId = (int) session('selected_account_id');
-                    $assignedAccount = $accounts->firstWhere('id', $selectedAccountId) ?: $accounts->first();
-                    if ($assignedAccount && $selectedAccountId !== (int) $assignedAccount->id) {
-                        session(['selected_account_id' => $assignedAccount->id]);
-                    }
-                    if (!$assignedAccount) {
-                        session()->forget('selected_account_id');
-                    }
-                @endphp
                 <div class="user-dropdown">
                     <button type="button" class="user-trigger" id="businessDropdownBtn">
                         <i class="fa fa-briefcase"></i>
-                        <span>{{ $business?->name ?? 'Your Business' }}</span>
+                        <span>{{ $navBusiness?->name ?? 'Your Business' }}</span>
                         <i class="fa fa-chevron-down"></i>
                     </button>
                     <div class="user-menu" id="businessDropdownMenu">
                         <div class="menu-head">
-                            <div class="menu-name">{{ $business?->name ?? 'No Business Yet' }}</div>
-                            <div class="menu-email">{{ $business?->category ?? 'Complete onboarding in Overview' }}</div>
+                            <div class="menu-name">{{ $navBusiness?->name ?? 'No Business Yet' }}</div>
+                            <div class="menu-email">{{ $navBusiness?->category ?? 'Complete onboarding in Overview' }}</div>
                         </div>
-                        @if($business)
+                        @if($navBusinesses->count() > 1)
+                            <div class="menu-row" style="display:block;">
+                                <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">Selected business</div>
+                                <form method="post" action="{{ route('business.select') }}">
+                                    @csrf
+                                    <select name="business_id" class="dropdown-select" onchange="this.form.submit()">
+                                        @foreach($navBusinesses as $businessOption)
+                                            <option value="{{ $businessOption->id }}" {{ (int) ($navBusiness?->id ?? 0) === (int) $businessOption->id ? 'selected' : '' }}>
+                                                {{ $businessOption->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </form>
+                            </div>
+                        @endif
+                        @if($navBusiness)
                             <div class="menu-row">
                                 <span><i class="fa fa-layer-group" style="margin-right:6px;"></i>Category</span>
-                                <span class="pkg-badge">{{ $business->category }}</span>
+                                <span class="pkg-badge">{{ $navBusiness->category }}</span>
                             </div>
                             <div class="menu-row" style="display:block;">
                                 <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">About Business</div>
-                                <div style="font-size:13px;line-height:1.4;">{{ $business->description ?: 'No description added yet.' }}</div>
+                                <div style="font-size:13px;line-height:1.4;">{{ $navBusiness->description ?: 'No description added yet.' }}</div>
                             </div>
                         @endif
                     </div>

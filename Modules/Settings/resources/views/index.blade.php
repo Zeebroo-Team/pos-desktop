@@ -32,23 +32,22 @@
     @else
     @php
         $tabNames = $tabs->keys()->values();
-        $allSettings = $tabs->flatten(1)->values();
-        $activeTab = request('tab', 'all');
-        $activeSettings = $activeTab === 'all' ? $allSettings : $tabs->get($activeTab, collect());
+        $requestedTab = request('tab');
+        $activeTab = $requestedTab !== null && $requestedTab !== '' && $tabs->has($requestedTab)
+            ? $requestedTab
+            : (string) ($tabNames->first() ?? '');
+        if ($activeTab === '' || !$tabs->has($activeTab)) {
+            $activeTab = (string) ($tabNames->first() ?? '');
+        }
+        $activeSettings = $tabs->get($activeTab, collect())->values();
     @endphp
 
     @if($tabs->isNotEmpty())
         <div style="margin-top:10px;">
             <div class="muted" style="font-size:11px;margin-bottom:6px;">
-                {{ $scopeType === 'user' ? 'User Settings Tabs' : 'Business Settings Tabs' }}
+                Sections
             </div>
             <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                <a href="{{ request()->fullUrlWithQuery(['tab' => 'all']) }}"
-                   style="text-decoration:none;padding:5px 9px;border-radius:999px;border:1px solid var(--border);font-size:12px;
-                          background:{{ $activeTab === 'all' ? 'color-mix(in srgb,var(--primary) 24%,var(--card))' : 'var(--card)' }};
-                          color:var(--text);">
-                    All
-                </a>
             @foreach($tabNames as $tabName)
                 <a href="{{ request()->fullUrlWithQuery(['tab' => $tabName]) }}"
                    style="text-decoration:none;padding:5px 9px;border-radius:999px;border:1px solid var(--border);font-size:12px;
@@ -151,6 +150,10 @@
                                name="values[{{ $setting['key'] }}]"
                                value="{{ $setting['value'] }}"
                                placeholder="{{ $setting['placeholder'] }}"
+                               @if($setting['type'] === 'number') step="1"
+                                   @if(is_int($setting['min'] ?? null))min="{{ $setting['min'] }}"@endif
+                                   @if(is_int($setting['max'] ?? null))max="{{ $setting['max'] }}"@endif
+                               @endif
                                {{ $setting['required'] ? 'required' : '' }}
                                {{ $setting['is_disabled'] ? 'disabled' : '' }}
                                style="padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px;">

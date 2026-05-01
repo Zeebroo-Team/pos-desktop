@@ -122,6 +122,19 @@
       "is_disabled": false
     },
     {
+      "tab": "business",
+      "key": "business.multi_warehouse_branch",
+      "name": "Multi warehouse / branches",
+      "type": "checkbox",
+      "default": false,
+      "options": [],
+      "required": false,
+      "description": "Turn on when your business runs multiple warehouses or branches; leave off for a single location.",
+      "placeholder": "Multi warehouse / branch mode",
+      "is_enabled": true,
+      "is_disabled": false
+    },
+    {
       "tab": "invoice",
       "key": "invoice.prefix",
       "name": "Invoice Prefix",

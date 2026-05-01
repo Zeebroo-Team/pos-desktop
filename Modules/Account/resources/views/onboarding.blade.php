@@ -107,7 +107,7 @@
         <form method="post" action="{{ route('account.store') }}" class="account-onboard-form">
             @csrf
             <input type="hidden" name="from_onboarding" value="1">
-            <input type="hidden" name="bank_type_id" id="bankTypeId" value="{{ old('bank_type_id') }}">
+            <input type="hidden" name="bank_type_id" id="bankTypeId" value="{{ old('bank_type_id', $defaultBankTypeId) }}">
 
             <div class="step-head">
                 <h2 style="margin:0;">Account Onboarding Wizard</h2>
@@ -157,6 +157,7 @@
                         <option value="{{ $business->id }}" @selected(old('business_id', $defaultBusiness?->id) == $business->id)>{{ $business->name }}</option>
                     @endforeach
                 </select>
+                @include('account::partials.warehouse-branch-select', ['presetBranchId' => old('branch_id')])
                 <input name="bank_account_number" value="{{ old('bank_account_number') }}" placeholder="Bank account number" required>
                 <input name="branch" value="{{ old('branch') }}" placeholder="Branch" required>
                 <div class="onboard-actions">
@@ -217,7 +218,7 @@
 
     @if($errors->has('bank_id') || $errors->has('account_name'))
         setStep(2);
-    @elseif($errors->has('business_id') || $errors->has('bank_account_number') || $errors->has('branch'))
+    @elseif($errors->has('business_id') || $errors->has('branch_id') || $errors->has('bank_account_number') || $errors->has('branch'))
         setStep(3);
     @elseif($errors->has('current_balance') || $errors->has('bank_officer_contact') || $errors->has('notes'))
         setStep(4);

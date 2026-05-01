@@ -25,6 +25,10 @@
                 <option value="{{ $business->id }}" @selected(old('business_id', $account->business_id) == $business->id)>{{ $business->name }}</option>
             @endforeach
         </select>
+        @include('account::partials.warehouse-branch-select', [
+            'presetBranchId' => old('branch_id', $account->branch_id),
+            'warehouseSelectClass' => 'acc-field',
+        ])
         <input name="account_name" value="{{ old('account_name', $account->account_name) }}" placeholder="Account name" required class="acc-field">
         <select name="bank_type_id" required class="acc-field">
             @foreach($bankTypes as $type)

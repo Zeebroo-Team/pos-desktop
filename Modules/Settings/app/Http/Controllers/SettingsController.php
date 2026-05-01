@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Modules\Settings\Services\SettingsService;
 
 class SettingsController extends Controller
@@ -103,12 +104,25 @@ class SettingsController extends Controller
 
     public function bulkStore(Request $request, SettingsService $settingsService)
     {
-        $validated = $request->validate([
+        $validatedScope = $request->validate([
             'scope' => ['required', 'in:user,business'],
+        ]);
+
+        $definitionsAll = $this->getDefinitionsByScope($validatedScope['scope'])
+            ->filter(fn (array $definition) => $definition['is_enabled'] && !$definition['is_disabled']);
+
+        $allowedTabs = $definitionsAll->map(fn (array $d) => $this->resolveDefinitionTab($d))->unique()->values()->all();
+        if (count($allowedTabs) === 0) {
+            return redirect()->back()->withErrors(['settings' => 'No settings sections are available for this scope.']);
+        }
+
+        $validatedRest = $request->validate([
             'values' => ['nullable', 'array'],
             'files' => ['nullable', 'array'],
-            'tab' => ['nullable', 'string'],
+            'tab' => ['required', 'string', Rule::in($allowedTabs)],
         ]);
+
+        $validated = array_merge($validatedScope, $validatedRest);
 
         $user = $request->user();
         $scope = $validated['scope'] === 'business'
@@ -119,12 +133,10 @@ class SettingsController extends Controller
             return redirect()->back()->withErrors(['scope' => 'Business not found for this user.']);
         }
 
-        $definitions = $this->getDefinitionsByScope($validated['scope'])
-            ->filter(fn (array $definition) => $definition['is_enabled'] && !$definition['is_disabled']);
-        $selectedTab = (string) ($validated['tab'] ?? 'all');
-        $definitions = $selectedTab === 'all'
-            ? $definitions
-            : $definitions->filter(fn (array $definition) => (string) ($definition['tab'] ?? 'general') === $selectedTab);
+        $definitions = $definitionsAll->filter(
+            fn (array $d) => $this->resolveDefinitionTab($d) === $validated['tab']
+        )->values();
+
         $existingSettings = $settingsService->allForScope($scope);
         $uploadedFiles = $request->file('files', []);
 
@@ -169,8 +181,9 @@ class SettingsController extends Controller
         $settingsService->setMany($scope, $toSave);
 
         $routeName = $validated['scope'] === 'business' ? 'settings.business' : 'settings.user';
+        $callbackUrl = route($routeName).'?' . http_build_query(['tab' => $validated['tab']]);
 
-        return redirect()->route($routeName)->with('status', 'All settings saved successfully.');
+        return redirect()->to($callbackUrl)->with('status', 'Settings saved successfully.');
     }
 
     private function renderSettingsPage(
@@ -202,7 +215,7 @@ class SettingsController extends Controller
         return $definitions
             ->filter(fn (array $definition) => $definition['is_enabled'] && !$definition['is_disabled'])
             ->map(function (array $definition) use ($settings): array {
-                $tab = (string) ($definition['tab'] ?: explode('.', $definition['key'])[0] ?? 'general');
+                $tab = $this->resolveDefinitionTab($definition);
                 $key = $definition['key'];
                 $hasValue = $settings->has($key);
                 $currentValue = $hasValue ? $settings->get($key) : ($definition['default'] ?? null);
@@ -215,6 +228,13 @@ class SettingsController extends Controller
             })
             ->groupBy('tab')
             ->map(fn (Collection $items) => $items->values());
+    }
+
+    private function resolveDefinitionTab(array $definition): string
+    {
+        return (string) (($definition['tab'] ?? '') !== ''
+            ? $definition['tab']
+            : (explode('.', (string) ($definition['key'] ?? ''))[0] ?: 'general'));
     }
 
     private function getDefinitionsByScope(string $scopeType): Collection
@@ -236,6 +256,8 @@ class SettingsController extends Controller
                     'name' => (string) ($definition['name'] ?? ($definition['key'] ?? '')),
                     'type' => (string) ($definition['type'] ?? 'text'),
                     'default' => $definition['default'] ?? null,
+                    'min' => array_key_exists('min', $definition) && is_numeric($definition['min']) ? (int) $definition['min'] : null,
+                    'max' => array_key_exists('max', $definition) && is_numeric($definition['max']) ? (int) $definition['max'] : null,
                     'options' => is_array($definition['options'] ?? null) ? $definition['options'] : [],
                     'required' => (bool) ($definition['required'] ?? false),
                     'description' => (string) ($definition['description'] ?? ''),
@@ -267,7 +289,27 @@ class SettingsController extends Controller
         }
 
         if ($type === 'number') {
-            return is_numeric($rawValue) ? (int) $rawValue : 0;
+            if ($rawValue === null || $rawValue === '') {
+                return isset($definition['default']) && is_numeric($definition['default'])
+                    ? (int) $definition['default']
+                    : 0;
+            }
+            if (!is_numeric($rawValue)) {
+                return isset($definition['default']) && is_numeric($definition['default'])
+                    ? (int) $definition['default']
+                    : 0;
+            }
+            $num = (int) $rawValue;
+            $min = $definition['min'] ?? null;
+            $max = $definition['max'] ?? null;
+            if (is_int($min)) {
+                $num = max($min, $num);
+            }
+            if (is_int($max)) {
+                $num = min($max, $num);
+            }
+
+            return $num;
         }
 
         if ($type === 'select') {
