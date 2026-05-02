@@ -64,7 +64,7 @@ html.emp-modal-open-html,html.emp-modal-open-html body{overflow:hidden;}
         <div style="margin:0 0 12px;padding:10px 12px;border-radius:10px;border:1px solid color-mix(in srgb,#22c55e 40%,var(--border));background:color-mix(in srgb,#22c55e 9%,transparent);font-size:13px;font-weight:600;">{{ session('status') }}</div>
     @endif
     <p class="muted" style="margin:0 0 14px;font-size:13px;line-height:1.45;">
-        Employees for <strong style="color:var(--text);">{{ $business->name }}</strong>. Department and job title use your business catalogue; choose <strong>+ New department…</strong> or <strong>+ New job title…</strong> to add a row—the related record is created when you save this form. Dates use <strong>Y–M–D</strong> on this screen.
+        Employees for <strong style="color:var(--text);">{{ $business->name }}</strong>. Departments and designations live in catalogues—you can extend them inline here or centrally on <a href="{{ route('hr.departments.index') }}" style="color:var(--primary);font-weight:600;">Departments</a> and <a href="{{ route('hr.job-titles.index') }}" style="color:var(--primary);font-weight:600;">Designations</a>. New rows from this save add to the catalogue when you submit. Dates use <strong>Y–M–D</strong> here.
         <a href="{{ route('hr.index') }}" style="color:var(--primary);font-weight:600;">HR hub</a>
     </p>
 
