@@ -39,6 +39,10 @@ return [
         'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
         'redirect' => env('GOOGLE_REDIRECT_URI'),
+        /** Request Google Business Profile (My Business) API scope during Google OAuth — enable APIs in GCP and complete OAuth verification as required. */
+        'business_manage_scope' => filter_var(env('GOOGLE_BUSINESS_PROFILE_SCOPE', false), FILTER_VALIDATE_BOOLEAN),
+        /** Use consent to obtain refresh tokens / new scopes after changing GOOGLE_BUSINESS_PROFILE_SCOPE */
+        'oauth_prompt' => env('GOOGLE_OAUTH_PROMPT', 'select_account'),
     ],
 
 ];

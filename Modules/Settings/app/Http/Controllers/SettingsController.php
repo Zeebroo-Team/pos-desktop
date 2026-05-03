@@ -9,6 +9,9 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Modules\Business\Models\Business;
+use Modules\Business\Services\BusinessProfileSettingSync;
+use Modules\Business\Support\BrandCompanyCategoryCatalog;
 use Modules\Settings\Services\SettingsService;
 
 class SettingsController extends Controller
@@ -33,7 +36,7 @@ class SettingsController extends Controller
 
     public function business(Request $request, SettingsService $settingsService)
     {
-        $business = $request->user()?->businesses()->latest()->first();
+        $business = $this->resolveBusinessScope($request);
 
         return $this->renderSettingsPage(
             scopeType: 'business',
@@ -52,14 +55,14 @@ class SettingsController extends Controller
             'value' => ['nullable'],
         ]);
 
-        $definition = $this->findDefinition($validated['scope'], $validated['key']);
+        $definition = $this->findAugmentedDefinition($validated['scope'], $validated['key']);
         if (!$definition || !$definition['is_enabled'] || $definition['is_disabled']) {
             return redirect()->back()->withErrors(['key' => 'Invalid or disabled setting field.']);
         }
 
         $user = $request->user();
         $scope = $validated['scope'] === 'business'
-            ? $user?->businesses()->latest()->first()
+            ? $this->resolveBusinessScope($request)
             : $user;
 
         if (!$scope) {
@@ -88,7 +91,7 @@ class SettingsController extends Controller
 
         $user = $request->user();
         $scope = $validated['scope'] === 'business'
-            ? $user?->businesses()->latest()->first()
+            ? $this->resolveBusinessScope($request)
             : $user;
 
         if (!$scope) {
@@ -108,7 +111,7 @@ class SettingsController extends Controller
             'scope' => ['required', 'in:user,business'],
         ]);
 
-        $definitionsAll = $this->getDefinitionsByScope($validatedScope['scope'])
+        $definitionsAll = $this->augmentDefinitionsForScope($validatedScope['scope'])
             ->filter(fn (array $definition) => $definition['is_enabled'] && !$definition['is_disabled']);
 
         $allowedTabs = $definitionsAll->map(fn (array $d) => $this->resolveDefinitionTab($d))->unique()->values()->all();
@@ -126,7 +129,7 @@ class SettingsController extends Controller
 
         $user = $request->user();
         $scope = $validated['scope'] === 'business'
-            ? $user?->businesses()->latest()->first()
+            ? $this->resolveBusinessScope($request)
             : $user;
 
         if (!$scope) {
@@ -180,10 +183,48 @@ class SettingsController extends Controller
 
         $settingsService->setMany($scope, $toSave);
 
+        if (
+            $validated['scope'] === 'business'
+            && $validated['tab'] === 'brand'
+            && $scope instanceof Business
+        ) {
+            $freshAll = $settingsService->allForScope($scope);
+            app(BusinessProfileSettingSync::class)->applyBrandTabFromSettings($scope, $freshAll);
+        }
+
         $routeName = $validated['scope'] === 'business' ? 'settings.business' : 'settings.user';
         $callbackUrl = route($routeName).'?' . http_build_query(['tab' => $validated['tab']]);
 
         return redirect()->to($callbackUrl)->with('status', 'Settings saved successfully.');
+    }
+
+    private function resolveBusinessScope(Request $request): ?Business
+    {
+        return Business::currentForNavbar($request->user());
+    }
+
+    /** @return Collection<int, array<string,mixed>> */
+    private function augmentDefinitionsForScope(string $scopeType): Collection
+    {
+        $definitions = $this->getDefinitionsByScope($scopeType);
+
+        if ($scopeType !== 'business') {
+            return $definitions;
+        }
+
+        return $definitions->map(function (array $definition): array {
+            if ($definition['key'] !== BusinessProfileSettingSync::KEY_CATEGORY_SLUG) {
+                return $definition;
+            }
+
+            return [
+                ...$definition,
+                'type' => 'select',
+                'required' => true,
+                'placeholder' => $definition['placeholder'] ?: 'Select category…',
+                'options' => BrandCompanyCategoryCatalog::options(),
+            ];
+        });
     }
 
     private function renderSettingsPage(
@@ -193,8 +234,14 @@ class SettingsController extends Controller
         string $heading,
         SettingsService $settingsService
     ) {
-        $definitions = $this->getDefinitionsByScope($scopeType);
+        $definitions = $this->augmentDefinitionsForScope($scopeType);
+
         $settings = $scopeModel ? $settingsService->allForScope($scopeModel) : collect();
+
+        if ($scopeModel instanceof Business) {
+            app(BusinessProfileSettingSync::class)->hydrateBusinessSettingsUi($scopeModel, $settings);
+        }
+
         $tabs = $this->buildTabs($definitions, $settings);
 
         return view('settings::index', [
@@ -269,9 +316,9 @@ class SettingsController extends Controller
             ->values();
     }
 
-    private function findDefinition(string $scopeType, string $key): ?array
+    private function findAugmentedDefinition(string $scopeType, string $key): ?array
     {
-        return $this->getDefinitionsByScope($scopeType)
+        return $this->augmentDefinitionsForScope($scopeType)
             ->first(fn (array $definition) => $definition['key'] === $key);
     }
 

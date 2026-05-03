@@ -123,6 +123,10 @@
         .navchip{display:inline-block;border:1px solid var(--border);border-radius:999px;padding:5px 10px;color:var(--muted);font-size:13px}
         .user-dropdown{position:relative}
         .user-trigger{display:flex;align-items:center;gap:10px;border:1px solid var(--border);background:color-mix(in srgb,var(--card) 90%,transparent);color:var(--text);padding:7px 10px;border-radius:12px;cursor:pointer}
+        a.user-trigger{text-decoration:none;box-sizing:border-box}
+        a.user-trigger.nav-business-profile{padding:4px 8px;gap:6px;border-radius:8px;font-size:12px;font-weight:600}
+        a.user-trigger.nav-business-profile i{font-size:11px;width:12px;text-align:center}
+        a.user-trigger.nav-business-profile--active{border-color:color-mix(in srgb,var(--primary) 45%,var(--border));background:color-mix(in srgb,var(--primary) 14%,transparent)}
         .avatar{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,var(--primary),color-mix(in srgb,var(--primary) 35%,#fff));font-weight:700;color:#fff}
         .user-menu{position:absolute;right:0;top:calc(100% + 8px);min-width:280px;background:color-mix(in srgb,var(--card) 94%,transparent);border:1px solid var(--border);border-radius:14px;padding:12px;display:none;box-shadow:0 18px 36px rgba(0,0,0,.28);backdrop-filter:blur(10px)}
         .user-menu.open{display:block}
@@ -306,6 +310,12 @@
             </div>
             <div class="nav-right">
                 <div class="navchip">{{ now()->format('d M Y') }}</div>
+                @if($navBusiness)
+                    <a href="{{ route('business.profile') }}" class="user-trigger nav-business-profile @if(request()->routeIs('business.profile')) nav-business-profile--active @endif" title="Business profile">
+                        <i class="fa fa-id-card"></i>
+                        <span>Business profile</span>
+                    </a>
+                @endif
                 <div class="user-dropdown">
                     <button type="button" class="user-trigger" id="businessDropdownBtn">
                         <i class="fa fa-briefcase"></i>

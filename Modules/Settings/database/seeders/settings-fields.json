@@ -176,17 +176,56 @@
       "is_disabled": false
     },
     {
-        "tab": "tax",
-        "key": "tax.secure",
-        "name": "Enable Secure",
-        "type": "checkbox",
-        "default": false,
-        "options": [],
-        "required": false,
-        "description": "Enable secure data.",
-        "placeholder": "",
-        "is_enabled": true,
-        "is_disabled": false
-      }
+      "tab": "tax",
+      "key": "tax.secure",
+      "name": "Enable Secure",
+      "type": "checkbox",
+      "default": false,
+      "options": [],
+      "required": false,
+      "description": "Enable secure data.",
+      "placeholder": "",
+      "is_enabled": true,
+      "is_disabled": false
+      },
+    {
+      "tab": "brand",
+      "key": "business.profile.company_category_slug",
+      "name": "Company category",
+      "type": "text",
+      "default": "",
+      "options": [],
+      "required": true,
+      "description": "Synced with Business profile branding. Saves here update the core business record.",
+      "placeholder": "",
+      "is_enabled": true,
+      "is_disabled": false
+    },
+    {
+      "tab": "brand",
+      "key": "business.profile.short_description",
+      "name": "Short description",
+      "type": "textarea",
+      "default": "",
+      "options": [],
+      "required": false,
+      "description": "Brief tagline (shown on overview). Mirrors Business profile → Brand.",
+      "placeholder": "",
+      "is_enabled": true,
+      "is_disabled": false
+    },
+    {
+      "tab": "brand",
+      "key": "business.profile.description",
+      "name": "Full description",
+      "type": "textarea",
+      "default": "",
+      "options": [],
+      "required": false,
+      "description": "Full company narrative. Mirrors Business profile → Brand.",
+      "placeholder": "",
+      "is_enabled": true,
+      "is_disabled": false
+    }
   ]
 }

@@ -14,11 +14,20 @@ class GoogleAppConnectionService
 {
     public function redirectToGoogle(): RedirectResponse
     {
+        $scopes = ['openid', 'profile', 'email'];
+        if (config('services.google.business_manage_scope')) {
+            $scopes[] = 'https://www.googleapis.com/auth/business.manage';
+        }
+        $prompt = (string) config('services.google.oauth_prompt', 'select_account');
+        if ($prompt === '') {
+            $prompt = 'select_account';
+        }
+
         return Socialite::driver('google')
-            ->scopes(['openid', 'profile', 'email'])
+            ->scopes($scopes)
             ->with([
                 'access_type' => 'offline',
-                'prompt' => 'select_account',
+                'prompt' => $prompt,
             ])
             ->redirect();
     }

@@ -23,7 +23,13 @@ class Business extends Model
         'user_id',
         'name',
         'category',
+        'company_category_slug',
         'description',
+        'short_description',
+        'brand_features',
+        'google_location_resource',
+        'google_location_title_cache',
+        'logo_path',
         'warehouse_branch_intro_acknowledged_at',
     ];
 
@@ -31,12 +37,41 @@ class Business extends Model
     {
         return [
             'warehouse_branch_intro_acknowledged_at' => 'datetime',
+            'google_location_linked_at' => 'datetime',
+            'brand_features' => 'array',
         ];
     }
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** Public URL for the stored logo, or null if none. */
+    public function logoUrl(): ?string
+    {
+        if (! $this->logo_path) {
+            return null;
+        }
+
+        return asset('storage/'.$this->logo_path);
+    }
+
+    public static function defaultLogoPlaceholderUrl(): string
+    {
+        return asset('images/business-logo-placeholder.svg');
+    }
+
+    /** True when the business has uploaded a custom logo file. */
+    public function hasCustomLogo(): bool
+    {
+        return filled($this->logo_path);
+    }
+
+    /** Logo URL for UI: uploaded file or shared placeholder graphic. */
+    public function displayLogoUrl(): string
+    {
+        return $this->logoUrl() ?? self::defaultLogoPlaceholderUrl();
     }
 
     public function loans(): HasMany
