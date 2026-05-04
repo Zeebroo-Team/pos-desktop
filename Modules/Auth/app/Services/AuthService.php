@@ -15,10 +15,13 @@ class AuthService
 
     public function register(array $data): User
     {
-        $roleName = $data['role'];
-        unset($data['role']);
-
-        $user = User::create($data);
+        /** Public sign-up is always a standard user — admin roles are never granted here. */
+        $user = User::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'password' => $data['password'],
+        ]);
+        $roleName = 'user';
         Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
         $user->assignRole($roleName);
 

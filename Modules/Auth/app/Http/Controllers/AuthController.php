@@ -17,12 +17,17 @@ class AuthController extends Controller
 
     public function showLogin(): View
     {
-        return view('auth::auth.login');
+        return view('auth::auth.login', ['googleAuthConfigured' => $this->googleOAuthConfigured()]);
     }
 
     public function showRegister(): View
     {
-        return view('auth::auth.register');
+        return view('auth::auth.register', ['googleAuthConfigured' => $this->googleOAuthConfigured()]);
+    }
+
+    private function googleOAuthConfigured(): bool
+    {
+        return filled(config('services.google.client_id')) && filled(config('services.google.client_secret'));
     }
 
     public function login(Request $request): RedirectResponse
@@ -47,9 +52,8 @@ class AuthController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'confirmed', Password::defaults()],
-            'role' => ['required', 'in:user,admin'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email', 'confirmed'],
+            'password' => ['required', Password::defaults()],
         ]);
 
         $user = $this->authService->register($data);

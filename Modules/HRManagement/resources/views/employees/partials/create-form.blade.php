@@ -1,13 +1,16 @@
 @php
-    $submitLabel = $submitLabel ?? 'Register employee';
+    $submitLabel = $submitLabel ?? 'Create employee';
     $formBannerClass = $formBannerClass ?? 'emp-inline-form__banner';
     $showFormErrorBanner = filter_var($showFormErrorBanner ?? true, FILTER_VALIDATE_BOOLEAN);
     $pickNewRow = \Modules\HRManagement\Models\Employee::SELECT_NEW_ROW;
+    $allowanceTypes = $allowanceTypes ?? collect();
+    $salaryCurrency = trim((string) get_settings('business.currency', '', $business ?? null));
+    $salaryCurrencySuffix = $salaryCurrency !== '' ? ' ('.$salaryCurrency.')' : '';
 @endphp
 @if($errors->any() && $showFormErrorBanner)
     <div class="{{ $formBannerClass }}" role="alert">{{ $errors->first() }}</div>
 @endif
-<form method="post" action="{{ route('hr.employees.store') }}" class="emp-form-grid">
+<form method="post" action="{{ route('hr.employees.store') }}" class="emp-form-grid" enctype="multipart/form-data">
     @csrf
     <fieldset class="emp-fieldset">
         <legend class="emp-legend">1. Personal details</legend>
@@ -15,6 +18,10 @@
             <div class="emp-field emp-field--full">
                 <label for="emp-full-name">Full name <span class="emp-req">*</span></label>
                 <input type="text" name="full_name" id="emp-full-name" value="{{ old('full_name') }}" required maxlength="255" autocomplete="name" placeholder="Legal name">
+            </div>
+            <div class="emp-field emp-field--full">
+                <label for="emp-profile-photo-create">Profile photo <span class="muted" style="font-weight:600;text-transform:none;letter-spacing:0;">(optional)</span></label>
+                <input type="file" name="profile_photo" id="emp-profile-photo-create" accept="image/*">
             </div>
             <div class="emp-field">
                 <label for="emp-dob">Date of birth <span class="emp-req">*</span></label>
@@ -95,7 +102,50 @@
     </fieldset>
 
     <fieldset class="emp-fieldset">
-        <legend class="emp-legend">3. Emergency contact</legend>
+        <legend class="emp-legend">3. Salary &amp; compensation</legend>
+        <p class="muted" style="margin:-4px 0 12px;font-size:12px;line-height:1.45;grid-column:1/-1;">
+            {{ __('Monthly gross must equal basic salary plus the sum of all allowance amounts you enter.') }}
+            @if(Route::has('hr.allowance-types.index'))
+                <a href="{{ route('hr.allowance-types.index') }}" style="color:var(--primary);font-weight:600;">{{ __('Manage allowance types') }}</a>
+            @endif
+        </p>
+        <div class="emp-form-rows">
+            <div class="emp-field">
+                <label for="emp-basic-salary">{{ __('Basic salary') }} <span class="emp-req">*</span>{{ $salaryCurrencySuffix }}</label>
+                <input type="number" name="basic_salary" id="emp-basic-salary" value="{{ old('basic_salary') }}" required min="0" step="0.01" inputmode="decimal" placeholder="0.00" class="emp-salary-calc">
+            </div>
+            <div class="emp-field">
+                <label for="emp-monthly-salary">{{ __('Monthly gross salary') }} <span class="emp-req">*</span>{{ $salaryCurrencySuffix }}</label>
+                <input type="number" name="salary" id="emp-monthly-salary" value="{{ old('salary') }}" required min="0" step="0.01" inputmode="decimal" placeholder="0.00" class="emp-salary-calc">
+            </div>
+            @foreach($allowanceTypes as $at)
+                <div class="emp-field">
+                    <label for="emp-allow-{{ $at->id }}">{{ __('Allowance: :name', ['name' => $at->name]) }}</label>
+                    <input
+                        type="number"
+                        name="allowances[{{ $at->id }}]"
+                        id="emp-allow-{{ $at->id }}"
+                        value="{{ old('allowances.'.$at->id) }}"
+                        min="0"
+                        step="0.01"
+                        inputmode="decimal"
+                        placeholder="0.00"
+                        class="emp-salary-calc emp-allow-input"
+                        data-allowance-id="{{ $at->id }}"
+                    >
+                    @error('allowances.'.$at->id)
+                        <span style="display:block;margin-top:4px;font-size:12px;color:color-mix(in srgb,#f87171 90%,var(--text));">{{ $message }}</span>
+                    @enderror
+                </div>
+            @endforeach
+            <div class="emp-field emp-field--full">
+                <p id="emp-salary-sum-hint" class="muted" style="margin:0;font-size:12px;line-height:1.45;" aria-live="polite"></p>
+            </div>
+        </div>
+    </fieldset>
+
+    <fieldset class="emp-fieldset">
+        <legend class="emp-legend">4. Emergency contact</legend>
         <div class="emp-form-rows">
             <div class="emp-field">
                 <label for="emp-ec-name">Primary contact name <span class="emp-req">*</span></label>
@@ -113,7 +163,7 @@
     </fieldset>
 
     <fieldset class="emp-fieldset">
-        <legend class="emp-legend">4. Bank account details</legend>
+        <legend class="emp-legend">5. Bank account details</legend>
         <div class="emp-form-rows">
             <div class="emp-field emp-field--full">
                 <label for="emp-bank-holder">Account holder name <span class="emp-req">*</span></label>
@@ -144,7 +194,7 @@
     </fieldset>
 
     <fieldset class="emp-fieldset">
-        <legend class="emp-legend">5. Statutory / tax (optional)</legend>
+        <legend class="emp-legend">6. Statutory / tax (optional)</legend>
         <div class="emp-form-rows">
             <div class="emp-field">
                 <label for="emp-epf">EPF number</label>
@@ -188,5 +238,40 @@
 
     wire('emp-dept-id', 'emp-new-dept-wrap', 'emp-new-dept-name');
     wire('emp-job-title-id', 'emp-new-job-title-wrap', 'emp-new-job-title-name');
+
+    function parseMoney(v) {
+        if (v === '' || v === null || v === undefined) return 0;
+        var n = parseFloat(String(v).replace(',', '.'));
+        return isNaN(n) ? 0 : Math.max(0, n);
+    }
+    function fmt2(n) {
+        return (Math.round(n * 100) / 100).toFixed(2);
+    }
+    var basicEl = document.getElementById('emp-basic-salary');
+    var grossEl = document.getElementById('emp-monthly-salary');
+    var hintEl = document.getElementById('emp-salary-sum-hint');
+    var allowInputs = document.querySelectorAll('.emp-allow-input');
+    function recalcSalaryHint() {
+        if (!hintEl) return;
+        var basic = basicEl ? parseMoney(basicEl.value) : 0;
+        var sumAllow = 0;
+        allowInputs.forEach(function (inp) { sumAllow += parseMoney(inp.value); });
+        var expected = basic + sumAllow;
+        var gross = grossEl ? parseMoney(grossEl.value) : 0;
+        var cur = @json($salaryCurrency !== '' ? $salaryCurrency.' ' : '');
+        var msg = @json(__('Expected monthly gross (basic + allowances): ')) + cur + fmt2(expected);
+        var mismatch = grossEl && grossEl.value !== '' && Math.abs(gross - expected) > 0.02;
+        if (mismatch) {
+            msg += ' — ' + @json(__('does not match the monthly gross field.'));
+        }
+        hintEl.textContent = msg;
+        hintEl.classList.toggle('emp-salary-hint--bad', Boolean(mismatch));
+    }
+    [basicEl, grossEl].forEach(function (el) { el && el.addEventListener('input', recalcSalaryHint); el && el.addEventListener('change', recalcSalaryHint); });
+    allowInputs.forEach(function (el) {
+        el.addEventListener('input', recalcSalaryHint);
+        el.addEventListener('change', recalcSalaryHint);
+    });
+    recalcSalaryHint();
 })();
 </script>

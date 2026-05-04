@@ -1,29 +1,39 @@
-@extends('theme::layouts.auth', ['title' => 'Login'])
+@extends('theme::layouts.auth', ['title' => __('Sign in')])
 
 @section('content')
-    <h1>Welcome back</h1>
-    <p class="sub">Login to continue to your role-based dashboard.</p>
-    <form method="post" action="{{ route('login.submit') }}">
-        @csrf
-        <div class="field">
-            <label for="email">Email</label>
-            <input id="email" name="email" type="email" value="{{ old('email') }}" required>
-            <div class="error">@error('email'){{ $message }}@enderror</div>
+    <header class="auth-brand">
+        <div class="auth-brand__mark" aria-hidden="true"><i class="fa fa-right-to-bracket"></i></div>
+        <div class="auth-brand__text">
+            <h1>{{ __('Welcome back') }}</h1>
+            <p>{{ __('Sign in to your workspace') }}</p>
         </div>
-        <div class="field">
-            <label for="password">Password</label>
-            <input id="password" name="password" type="password" required>
-            <div class="error">@error('password'){{ $message }}@enderror</div>
-        </div>
-        <div class="row"><label><input style="width:auto" type="checkbox" name="remember"> Remember me</label></div>
-        <button type="submit">Sign in</button>
-    </form>
-    <div class="meta">New here? <a href="{{ route('register') }}">Create account</a></div>
-    <div class="theme">Theme:
-        <a href="#" data-theme="night">Night</a> ·
-        <a href="#" data-theme="light">Amber light</a> ·
-        <a href="#" data-theme="light_blue">Blue light</a> ·
-        <a href="#" data-theme="night_blue">Blue dark</a> ·
-        <a href="#" data-theme="ocean">Ocean</a>
+    </header>
+    <div class="auth-body">
+        <p class="sub">{{ __('Use your email and password to access your dashboard.') }}</p>
+        <form method="post" action="{{ route('login.submit') }}" autocomplete="on">
+            @csrf
+            <div class="field">
+                <label for="email">{{ __('Email') }}</label>
+                <input id="email" name="email" type="email" value="{{ old('email') }}" required autocomplete="email" placeholder="{{ __('you@company.com') }}">
+                <div class="error">@error('email'){{ $message }}@enderror</div>
+            </div>
+            <div class="field">
+                <label for="password">{{ __('Password') }}</label>
+                <input id="password" name="password" type="password" required autocomplete="current-password">
+                <div class="error">@error('password'){{ $message }}@enderror</div>
+            </div>
+            <div class="auth-check">
+                <input id="remember" type="checkbox" name="remember" value="1">
+                <label for="remember">{{ __('Remember this device') }}</label>
+            </div>
+            <button type="submit" class="auth-btn">{{ __('Sign in') }}</button>
+        </form>
+        @if(! empty($googleAuthConfigured))
+            <div class="auth-divider" role="presentation"><span>{{ __('Or continue with') }}</span></div>
+            <a class="auth-oauth" href="{{ route('auth.google.redirect') }}">
+                <i class="fa-brands fa-google" aria-hidden="true"></i>{{ __('Continue with Google') }}
+            </a>
+        @endif
+        <p class="auth-meta">{!! __('No account yet? :link', ['link' => '<a href="'.e(route('register')).'">'.__('Create one').'</a>']) !!}</p>
     </div>
 @endsection

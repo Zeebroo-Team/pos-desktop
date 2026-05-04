@@ -16,7 +16,7 @@ use Modules\Business\Models\Business;
 use Modules\Settings\Concerns\HasSettings;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'email', 'password', 'google_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {

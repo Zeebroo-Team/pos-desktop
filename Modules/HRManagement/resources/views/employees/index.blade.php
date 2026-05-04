@@ -33,6 +33,16 @@
 .emp-table th{text-align:left;padding:9px 12px;background:color-mix(in srgb,var(--card) 92%,transparent);font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);border-bottom:1px solid var(--border);}
 .emp-table td{padding:10px 12px;border-bottom:1px solid color-mix(in srgb,var(--border) 80%,transparent);vertical-align:top;}
 .emp-table tr:last-child td{border-bottom:none;}
+.emp-table tbody tr[data-show-url]{cursor:pointer;transition:background .14s ease;}
+.emp-table tbody tr[data-show-url]:hover{background:color-mix(in srgb,var(--primary)7%,transparent);}
+.emp-table tbody tr[data-show-url]:focus-visible{outline:2px solid color-mix(in srgb,var(--primary)52%,transparent);outline-offset:-2px;}
+.emp-table__namecell{display:flex;align-items:center;gap:10px;min-width:0;}
+.emp-table__thumb{
+    flex-shrink:0;width:32px;height:32px;border-radius:50%;overflow:hidden;border:1px solid color-mix(in srgb,var(--border)88%,transparent);
+    background:color-mix(in srgb,var(--primary)12%,var(--card));font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;
+    color:color-mix(in srgb,var(--primary)50%,var(--text));
+}
+.emp-table__thumb img{width:100%;height:100%;object-fit:cover;display:block;}
 .emp-modal{
     position:fixed;inset:0;z-index:120;display:flex;justify-content:center;align-items:flex-start;
     padding:max(12px,2.5vh) max(14px,env(safe-area-inset-right)) calc(14px + env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));
@@ -57,6 +67,7 @@
 .emp-modal__close:hover{border-color:color-mix(in srgb,var(--primary) 40%,var(--border));}
 .emp-modal__body{padding:14px 14px 16px;overflow:auto;-webkit-overflow-scrolling:touch;}
 html.emp-modal-open-html,html.emp-modal-open-html body{overflow:hidden;}
+.emp-salary-hint--bad{color:color-mix(in srgb,#f87171 92%,var(--text));font-weight:600;}
 </style>
 
 <div class="emp-page card" style="max-width:100%;padding:14px;">
@@ -64,7 +75,7 @@ html.emp-modal-open-html,html.emp-modal-open-html body{overflow:hidden;}
         <div style="margin:0 0 12px;padding:10px 12px;border-radius:10px;border:1px solid color-mix(in srgb,#22c55e 40%,var(--border));background:color-mix(in srgb,#22c55e 9%,transparent);font-size:13px;font-weight:600;">{{ session('status') }}</div>
     @endif
     <p class="muted" style="margin:0 0 14px;font-size:13px;line-height:1.45;">
-        Employees for <strong style="color:var(--text);">{{ $business->name }}</strong>. Departments and designations live in catalogues—you can extend them inline here or centrally on <a href="{{ route('hr.departments.index') }}" style="color:var(--primary);font-weight:600;">Departments</a> and <a href="{{ route('hr.job-titles.index') }}" style="color:var(--primary);font-weight:600;">Designations</a>. New rows from this save add to the catalogue when you submit. Dates use <strong>Y–M–D</strong> here.
+        Employees for <strong style="color:var(--text);">{{ $business->name }}</strong>. Departments and designations live in catalogues—you can extend them inline here or centrally on <a href="{{ route('hr.departments.index') }}" style="color:var(--primary);font-weight:600;">Departments</a> and <a href="{{ route('hr.job-titles.index') }}" style="color:var(--primary);font-weight:600;">Designations</a>. <a href="{{ route('hr.allowance-types.index') }}" style="color:var(--primary);font-weight:600;">Allowance types</a> define payroll add-ons per business. New rows from this save add to the catalogue when you submit. Dates use <strong>Y–M–D</strong> here.
         <a href="{{ route('hr.index') }}" style="color:var(--primary);font-weight:600;">HR hub</a>
     </p>
 
@@ -85,23 +96,26 @@ html.emp-modal-open-html,html.emp-modal-open-html body{overflow:hidden;}
             @endif
         </span>
         @if($employees->isNotEmpty())
-            <button type="button" id="emp-modal-open" class="linkbtn" style="padding:8px 16px;font-size:13px;display:inline-flex;align-items:center;gap:6px;"><i class="fa fa-user-plus"></i> Add employee</button>
+            <button type="button" id="emp-modal-open" class="linkbtn" style="padding:8px 16px;font-size:13px;display:inline-flex;align-items:center;gap:6px;"><i class="fa fa-user-plus"></i> Create employee</button>
         @endif
     </div>
 
     @if($employees->isEmpty())
         <section class="emp-inline-create" aria-labelledby="emp-inline-title">
             <header class="emp-inline-create__head">
-                <h2 id="emp-inline-title">Employee registration</h2>
-                <p class="emp-inline-create__lead">Legal identity, employment, emergency contact, bank details, and optional statutory references — stored only for this business.</p>
+                <h2 id="emp-inline-title">Create employee</h2>
+                <p class="emp-inline-create__lead">Legal identity, employment, basic salary &amp; monthly gross (with optional allowance lines from your catalogue), emergency contact, bank details, and optional statutory references — stored only for this business.</p>
             </header>
             @include('hrmanagement::employees.partials.create-form', [
+                'business' => $business,
                 'formBannerClass' => 'emp-inline-form__banner',
                 'showFormErrorBanner' => $errors->any(),
                 'employmentTypeLabels' => $employmentTypeLabels,
                 'banks' => $banks,
                 'departments' => $departments,
                 'jobTitles' => $jobTitles,
+                'allowanceTypes' => $allowanceTypes,
+                'submitLabel' => 'Create employee',
             ])
         </section>
     @else
@@ -120,8 +134,22 @@ html.emp-modal-open-html,html.emp-modal-open-html body{overflow:hidden;}
                 </thead>
                 <tbody>
                     @foreach($employees as $employee)
-                        <tr>
-                            <td><strong style="color:var(--text);">{{ $employee->full_name }}</strong></td>
+                        <tr
+                            tabindex="0"
+                            role="link"
+                            data-show-url="{{ route('hr.employees.show', $employee) }}"
+                            aria-label="{{ __('Open profile for :name', ['name' => $employee->full_name]) }}"
+                        >
+                            <td>
+                                <div class="emp-table__namecell">
+                                    @if($employee->profilePhotoUrl())
+                                        <span class="emp-table__thumb" aria-hidden="true"><img src="{{ $employee->profilePhotoUrl() }}" alt="" width="32" height="32"></span>
+                                    @else
+                                        <span class="emp-table__thumb" aria-hidden="true">{{ $employee->avatarInitials() }}</span>
+                                    @endif
+                                    <strong style="color:var(--text);min-width:0;">{{ $employee->full_name }}</strong>
+                                </div>
+                            </td>
                             <td>{{ $employee->employee_id }}</td>
                             <td>{{ $employee->jobTitle?->name ?? '—' }}</td>
                             <td>{{ $employee->department?->name ?? '—' }}</td>
@@ -138,18 +166,20 @@ html.emp-modal-open-html,html.emp-modal-open-html body{overflow:hidden;}
             <div class="emp-modal__backdrop" data-emp-modal-close tabindex="-1"></div>
             <div class="emp-modal__panel">
                 <div class="emp-modal__head">
-                    <h2 id="emp-modal-title">Register employee</h2>
+                    <h2 id="emp-modal-title">Create employee</h2>
                     <button type="button" class="emp-modal__close" data-emp-modal-close aria-label="Close">&times;</button>
                 </div>
                 <div class="emp-modal__body">
                     @include('hrmanagement::employees.partials.create-form', [
+                        'business' => $business,
                         'formBannerClass' => 'emp-modal__banner',
                         'showFormErrorBanner' => $errors->any(),
                         'employmentTypeLabels' => $employmentTypeLabels,
                         'banks' => $banks,
                         'departments' => $departments,
                         'jobTitles' => $jobTitles,
-                        'submitLabel' => 'Register employee',
+                        'allowanceTypes' => $allowanceTypes,
+                        'submitLabel' => 'Create employee',
                     ])
                 </div>
             </div>
@@ -205,6 +235,20 @@ html.emp-modal-open-html,html.emp-modal-open-html body{overflow:hidden;}
     if (modal && modal.classList.contains('emp-modal--open')) {
         lockScroll(true);
     }
+
+    document.querySelectorAll('.emp-table tbody tr[data-show-url]').forEach(function (row) {
+        function go () {
+            var u = row.getAttribute('data-show-url');
+            if (u) window.location.href = u;
+        }
+        row.addEventListener('click', go);
+        row.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                go();
+            }
+        });
+    });
 })();
 </script>
 @endsection

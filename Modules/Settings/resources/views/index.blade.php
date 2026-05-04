@@ -53,7 +53,7 @@
                    style="text-decoration:none;padding:5px 9px;border-radius:999px;border:1px solid var(--border);font-size:12px;
                           background:{{ $activeTab === $tabName ? 'color-mix(in srgb,var(--primary) 24%,var(--card))' : 'var(--card)' }};
                           color:var(--text);">
-                    {{ ucfirst($tabName) }}
+                    {{ $tabName === 'hr' ? 'HR' : ucfirst($tabName) }}
                 </a>
             @endforeach
             </div>
@@ -164,6 +164,14 @@
                 <button type="submit" style="padding:7px 12px;font-size:12px;">Save All Settings</button>
             </div>
         </form>
+
+        @if($scopeType === 'business' && $activeTab === 'hr' && isset($scopeModel) && $scopeModel instanceof \Modules\Business\Models\Business)
+            @include('hrmanagement::settings.business-hr-extras', [
+                'business' => $scopeModel,
+                'holidays' => $businessHolidays ?? collect(),
+                'hrPayrollOptedIn' => $hrPayrollOptedIn ?? false,
+            ])
+        @endif
     @else
         <p style="margin-top:14px;" class="muted">No {{ $scopeType }} settings yet.</p>
     @endif

@@ -1,9 +1,9 @@
 @php
     $__socibizUiThemesAllowed = ['night', 'light', 'light_blue', 'ocean', 'night_blue'];
-    $__socibizUiThemeStored = auth()->check() ? get_settings('ui.theme', 'night') : null;
+    $__socibizUiThemeStored = auth()->check() ? get_settings('ui.theme', 'light') : null;
     $__ui_theme = ($__socibizUiThemeStored !== null && in_array((string) $__socibizUiThemeStored, $__socibizUiThemesAllowed, true))
         ? (string) $__socibizUiThemeStored
-        : 'night';
+        : 'light';
 @endphp
 <!doctype html>
 <html lang="en" data-theme="{{ $__ui_theme }}">
@@ -225,6 +225,7 @@
         if (!$assignedAccount) {
             session()->forget('selected_account_id');
         }
+        $showSidebarSettingsSection = $navBusiness && $assignedAccount;
     @endphp
     @unless($minimalAppShell)
     <aside class="sidebar">
@@ -285,17 +286,19 @@
             @if($navBusiness && $navBusiness->multiWarehouseBranchEnabled())
                 <a href="{{ route('business.branches.index') }}" class="{{ request()->routeIs('business.branches.*') ? 'active' : '' }}"><i class="fa fa-code-branch"></i><span>Branches</span></a>
             @endif
-            <div class="menu-section">Configuration</div>
-            <div class="menu-group-title">
-                <i class="fa fa-sliders"></i><span>Settings</span>
-            </div>
-            <div class="submenu">
-                <a href="{{ route('settings.business') }}" class="{{ request()->routeIs('settings.business') ? 'active' : '' }}"><i class="fa fa-briefcase"></i><span>Business Settings</span></a>
-                <a href="{{ route('settings.user') }}" class="{{ request()->routeIs('settings.user') ? 'active' : '' }}"><i class="fa fa-user-gear"></i><span>User Settings</span></a>
-                @if(Route::has('app-connection.index'))
-                    <a href="{{ route('app-connection.index') }}" class="{{ request()->routeIs('app-connection.*') ? 'active' : '' }}"><i class="fa fa-plug"></i><span>App connections</span></a>
-                @endif
-            </div>
+            @if($showSidebarSettingsSection)
+                <div class="menu-section">Configuration</div>
+                <div class="menu-group-title">
+                    <i class="fa fa-sliders"></i><span>Settings</span>
+                </div>
+                <div class="submenu">
+                    <a href="{{ route('settings.business') }}" class="{{ request()->routeIs('settings.business') ? 'active' : '' }}"><i class="fa fa-briefcase"></i><span>Business Settings</span></a>
+                    <a href="{{ route('settings.user') }}" class="{{ request()->routeIs('settings.user') ? 'active' : '' }}"><i class="fa fa-user-gear"></i><span>User Settings</span></a>
+                    @if(Route::has('app-connection.index'))
+                        <a href="{{ route('app-connection.index') }}" class="{{ request()->routeIs('app-connection.*') ? 'active' : '' }}"><i class="fa fa-plug"></i><span>App connections</span></a>
+                    @endif
+                </div>
+            @endif
             @if(auth()->user()?->hasRole('admin'))
                 <a href="{{ route('admin.panel') }}" class="{{ request()->routeIs('admin.panel') ? 'active' : '' }}"><i class="fa fa-user-shield"></i><span>Admin Panel</span></a>
             @endif

@@ -12,6 +12,7 @@ use Illuminate\Validation\Rule;
 use Modules\Business\Models\Business;
 use Modules\Business\Services\BusinessProfileSettingSync;
 use Modules\Business\Support\BrandCompanyCategoryCatalog;
+use Modules\HRManagement\Services\HrPayrollSettingsService;
 use Modules\Settings\Services\SettingsService;
 
 class SettingsController extends Controller
@@ -55,18 +56,18 @@ class SettingsController extends Controller
             'value' => ['nullable'],
         ]);
 
-        $definition = $this->findAugmentedDefinition($validated['scope'], $validated['key']);
-        if (!$definition || !$definition['is_enabled'] || $definition['is_disabled']) {
-            return redirect()->back()->withErrors(['key' => 'Invalid or disabled setting field.']);
-        }
-
         $user = $request->user();
         $scope = $validated['scope'] === 'business'
             ? $this->resolveBusinessScope($request)
             : $user;
 
-        if (!$scope) {
+        if (! $scope) {
             return redirect()->back()->withErrors(['scope' => 'Business not found for this user.']);
+        }
+
+        $definition = $this->findAugmentedDefinition($validated['scope'], $validated['key'], $scope);
+        if (! $definition || ! $definition['is_enabled'] || $definition['is_disabled']) {
+            return redirect()->back()->withErrors(['key' => 'Invalid or disabled setting field.']);
         }
 
         $value = $this->normalizeInputValue($request, $definition);
@@ -94,8 +95,13 @@ class SettingsController extends Controller
             ? $this->resolveBusinessScope($request)
             : $user;
 
-        if (!$scope) {
+        if (! $scope) {
             return redirect()->back()->withErrors(['scope' => 'Business not found for this user.']);
+        }
+
+        $definition = $this->findAugmentedDefinition($validated['scope'], $validated['key'], $scope);
+        if (! $definition || ! $definition['is_enabled'] || $definition['is_disabled']) {
+            return redirect()->back()->withErrors(['key' => 'Invalid or disabled setting field.']);
         }
 
         $settingsService->forget($scope, $validated['key']);
@@ -111,8 +117,17 @@ class SettingsController extends Controller
             'scope' => ['required', 'in:user,business'],
         ]);
 
-        $definitionsAll = $this->augmentDefinitionsForScope($validatedScope['scope'])
-            ->filter(fn (array $definition) => $definition['is_enabled'] && !$definition['is_disabled']);
+        $user = $request->user();
+        $scope = $validatedScope['scope'] === 'business'
+            ? $this->resolveBusinessScope($request)
+            : $user;
+
+        if ($validatedScope['scope'] === 'business' && ! $scope) {
+            return redirect()->back()->withErrors(['scope' => 'Business not found for this user.']);
+        }
+
+        $definitionsAll = $this->augmentDefinitionsForScope($validatedScope['scope'], $scope)
+            ->filter(fn (array $definition) => $definition['is_enabled'] && ! $definition['is_disabled']);
 
         $allowedTabs = $definitionsAll->map(fn (array $d) => $this->resolveDefinitionTab($d))->unique()->values()->all();
         if (count($allowedTabs) === 0) {
@@ -126,15 +141,6 @@ class SettingsController extends Controller
         ]);
 
         $validated = array_merge($validatedScope, $validatedRest);
-
-        $user = $request->user();
-        $scope = $validated['scope'] === 'business'
-            ? $this->resolveBusinessScope($request)
-            : $user;
-
-        if (!$scope) {
-            return redirect()->back()->withErrors(['scope' => 'Business not found for this user.']);
-        }
 
         $definitions = $definitionsAll->filter(
             fn (array $d) => $this->resolveDefinitionTab($d) === $validated['tab']
@@ -204,7 +210,7 @@ class SettingsController extends Controller
     }
 
     /** @return Collection<int, array<string,mixed>> */
-    private function augmentDefinitionsForScope(string $scopeType): Collection
+    private function augmentDefinitionsForScope(string $scopeType, ?Model $scopeModel = null): Collection
     {
         $definitions = $this->getDefinitionsByScope($scopeType);
 
@@ -212,18 +218,35 @@ class SettingsController extends Controller
             return $definitions;
         }
 
-        return $definitions->map(function (array $definition): array {
-            if ($definition['key'] !== BusinessProfileSettingSync::KEY_CATEGORY_SLUG) {
-                return $definition;
+        return $definitions->map(function (array $definition) use ($scopeModel): array {
+            if ($definition['key'] === BusinessProfileSettingSync::KEY_CATEGORY_SLUG) {
+                return [
+                    ...$definition,
+                    'type' => 'select',
+                    'required' => true,
+                    'placeholder' => $definition['placeholder'] ?: 'Select category…',
+                    'options' => BrandCompanyCategoryCatalog::options(),
+                ];
             }
 
-            return [
-                ...$definition,
-                'type' => 'select',
-                'required' => true,
-                'placeholder' => $definition['placeholder'] ?: 'Select category…',
-                'options' => BrandCompanyCategoryCatalog::options(),
-            ];
+            if (($definition['key'] ?? '') === 'hr.head_employee_id' && $scopeModel instanceof Business) {
+                $opts = [['label' => '— Not set —', 'value' => '']];
+                foreach ($scopeModel->employees()->orderBy('full_name')->orderBy('id')->get() as $emp) {
+                    $opts[] = [
+                        'label' => $emp->full_name.' ('.$emp->employee_id.')',
+                        'value' => (string) $emp->getKey(),
+                    ];
+                }
+
+                return [
+                    ...$definition,
+                    'type' => 'select',
+                    'options' => $opts,
+                    'required' => false,
+                ];
+            }
+
+            return $definition;
         });
     }
 
@@ -234,7 +257,7 @@ class SettingsController extends Controller
         string $heading,
         SettingsService $settingsService
     ) {
-        $definitions = $this->augmentDefinitionsForScope($scopeType);
+        $definitions = $this->augmentDefinitionsForScope($scopeType, $scopeModel);
 
         $settings = $scopeModel ? $settingsService->allForScope($scopeModel) : collect();
 
@@ -244,12 +267,22 @@ class SettingsController extends Controller
 
         $tabs = $this->buildTabs($definitions, $settings);
 
+        $businessHolidays = collect();
+        $hrPayrollOptedIn = false;
+        if ($scopeModel instanceof Business) {
+            $businessHolidays = $scopeModel->hrHolidays()->orderBy('holiday_date')->orderBy('id')->get();
+            $hrPayrollOptedIn = app(HrPayrollSettingsService::class)->optedIn($scopeModel);
+        }
+
         return view('settings::index', [
             'title' => $title,
             'heading' => $heading,
             'scopeType' => $scopeType,
             'hasScope' => (bool) $scopeModel,
+            'scopeModel' => $scopeModel,
             'tabs' => $tabs,
+            'businessHolidays' => $businessHolidays,
+            'hrPayrollOptedIn' => $hrPayrollOptedIn,
         ]);
     }
 
@@ -316,9 +349,9 @@ class SettingsController extends Controller
             ->values();
     }
 
-    private function findAugmentedDefinition(string $scopeType, string $key): ?array
+    private function findAugmentedDefinition(string $scopeType, string $key, ?Model $scopeModel = null): ?array
     {
-        return $this->augmentDefinitionsForScope($scopeType)
+        return $this->augmentDefinitionsForScope($scopeType, $scopeModel)
             ->first(fn (array $definition) => $definition['key'] === $key);
     }
 
@@ -363,9 +396,12 @@ class SettingsController extends Controller
             $allowed = collect($definition['options'])
                 ->map(fn ($option) => is_array($option) ? ($option['value'] ?? null) : null)
                 ->filter(fn ($value) => $value !== null)
+                ->map(fn ($value) => (string) $value)
                 ->values();
 
-            if ($allowed->isNotEmpty() && !$allowed->contains($rawValue)) {
+            $needle = $rawValue === null || $rawValue === '' ? '' : (string) $rawValue;
+
+            if ($allowed->isNotEmpty() && ! $allowed->contains($needle)) {
                 return $definition['default'] ?? null;
             }
         }

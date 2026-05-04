@@ -114,6 +114,72 @@ class DepartmentEmployeeGrowthChartService
     }
 
     /**
+     * Single line: cumulative company headcount by month-end (hire date only).
+     *
+     * @return array{labels: list<string>, datasets: list<array<string, mixed>>, hasData: bool, note: string}
+     */
+    public function buildCompanyHeadcountSeries(Business $business): array
+    {
+        $note = __('Cumulative headcount: each point is how many people had joined on or before that month-end (by hire date).');
+
+        $employees = Employee::query()
+            ->where('business_id', $business->id)
+            ->whereNotNull('date_of_joining')
+            ->get(['id', 'date_of_joining']);
+
+        if ($employees->isEmpty()) {
+            return [
+                'labels' => [],
+                'datasets' => [],
+                'hasData' => false,
+                'note' => $note,
+            ];
+        }
+
+        $minJoin = $employees->min('date_of_joining');
+        if (! $minJoin instanceof Carbon) {
+            return [
+                'labels' => [],
+                'datasets' => [],
+                'hasData' => false,
+                'note' => $note,
+            ];
+        }
+
+        $months = $this->monthsGridFromEarliestJoin($minJoin);
+        $labels = array_map(static fn (Carbon $m) => $m->format('M Y'), $months);
+        $data = $this->cumulativeTotalHeadcount($employees, $months);
+
+        if (max($data) === 0) {
+            return [
+                'labels' => $labels,
+                'datasets' => [],
+                'hasData' => false,
+                'note' => $note,
+            ];
+        }
+
+        $color = $this->colorForIndex(0);
+
+        return [
+            'labels' => $labels,
+            'datasets' => [
+                array_merge([
+                    'label' => __('Total employees'),
+                    'data' => $data,
+                    'fill' => true,
+                    'tension' => 0.35,
+                    'borderWidth' => 2.5,
+                    'pointRadius' => 4,
+                    'pointHoverRadius' => 6,
+                ], $color),
+            ],
+            'hasData' => true,
+            'note' => $note,
+        ];
+    }
+
+    /**
      * Cumulative monthly headcount for one department roster (same rules as workspace chart).
      *
      * @return array{labels: list<string>, datasets: list<array<string, mixed>>, hasData: bool, note: string}
@@ -193,7 +259,7 @@ class DepartmentEmployeeGrowthChartService
     }
 
     /** @return list<Carbon> */
-    private function monthsGridFromEarliestJoin(Carbon $minJoin): array
+    protected function monthsGridFromEarliestJoin(Carbon $minJoin): array
     {
         $start = $minJoin->copy()->startOfMonth();
         $endMonth = Carbon::now()->startOfMonth();
@@ -263,7 +329,7 @@ class DepartmentEmployeeGrowthChartService
     /** @param  Collection<int, Employee>  $employees */
     /** @param  list<Carbon>  $months */
     /** @return list<int> */
-    private function cumulativeTotalHeadcount(Collection $employees, array $months): array
+    protected function cumulativeTotalHeadcount(Collection $employees, array $months): array
     {
         $out = [];
         foreach ($months as $month) {
@@ -280,7 +346,7 @@ class DepartmentEmployeeGrowthChartService
     }
 
     /** @return array{borderColor: string, backgroundColor: string} */
-    private function colorForIndex(int $index): array
+    protected function colorForIndex(int $index): array
     {
         $hue = ($index * 53) % 360;
 

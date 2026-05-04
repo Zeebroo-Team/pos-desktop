@@ -1,7 +1,7 @@
 @extends('theme::layouts.app', ['title' => 'AI Agent · '.$businessLabel, 'heading' => 'AI Agent', 'chatWorkspace' => true])
 
 @section('content')
-<div class="aibot-root"
+<div class="aibot-root aibot-root--intro"
      data-business-name="{{ e($businessLabel) }}"
      data-chat-url="{{ route('aibot.chat') }}"
      data-csrf="{{ csrf_token() }}"
@@ -207,12 +207,120 @@
         .aibot-history-item{white-space:nowrap;}
         .aibot-panel-foot{display:none;}
     }
+
+    /* Startup intro (disabled when .aibot-root--intro is removed) */
+    @media (prefers-reduced-motion: no-preference) {
+        .aibot-root--intro{position:relative;}
+        .aibot-root--intro::before{
+            content:'';
+            position:absolute;inset:0;pointer-events:none;z-index:0;
+            background:
+                radial-gradient(ellipse 85% 55% at 50% -8%,color-mix(in srgb,var(--primary) 22%,transparent),transparent 58%),
+                radial-gradient(ellipse 70% 40% at 92% 88%,color-mix(in srgb,var(--primary) 12%,transparent),transparent 55%),
+                radial-gradient(ellipse 50% 35% at 8% 75%,color-mix(in srgb,var(--btn-hover) 10%,transparent),transparent 50%);
+            opacity:0;
+            animation:aibot-intro-bg 1.15s ease-out forwards;
+        }
+        .aibot-root--intro > *{position:relative;z-index:1;}
+        @keyframes aibot-intro-bg{
+            from{opacity:0;filter:blur(8px);}
+            35%{opacity:1;filter:blur(0);}
+            to{opacity:.55;filter:blur(0);}
+        }
+        .aibot-root--intro .aibot-main{
+            opacity:0;
+            transform:translateY(18px) scale(.988);
+            animation:aibot-intro-main 0.72s cubic-bezier(.22,1,.36,1) 0.06s forwards;
+        }
+        @keyframes aibot-intro-main{
+            to{opacity:1;transform:translateY(0) scale(1);}
+        }
+        .aibot-root--intro .aibot-welcome-icon{
+            opacity:0;
+            transform:scale(.72) rotate(-12deg);
+            box-shadow:0 0 0 0 color-mix(in srgb,var(--primary) 35%,transparent);
+            animation:aibot-intro-icon 0.85s cubic-bezier(.34,1.56,.64,1) 0.04s forwards,aibot-intro-ring 1.8s ease-out 0.15s 1;
+        }
+        @keyframes aibot-intro-icon{
+            to{opacity:1;transform:scale(1) rotate(0deg);}
+        }
+        @keyframes aibot-intro-ring{
+            0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--primary) 45%,transparent);}
+            70%{box-shadow:0 0 0 14px transparent;}
+            100%{box-shadow:0 0 0 0 transparent;}
+        }
+        .aibot-root--intro .aibot-welcome-title{
+            opacity:0;
+            transform:translateY(14px);
+            animation:aibot-intro-fade-up 0.58s cubic-bezier(.22,1,.36,1) 0.18s forwards;
+        }
+        .aibot-root--intro .aibot-welcome-sub{
+            opacity:0;
+            transform:translateY(12px);
+            animation:aibot-intro-fade-up 0.58s cubic-bezier(.22,1,.36,1) 0.28s forwards;
+        }
+        .aibot-root--intro .aibot-suggestions{
+            opacity:0;
+            transform:translateY(10px);
+            animation:aibot-intro-fade-up 0.58s cubic-bezier(.22,1,.36,1) 0.4s forwards;
+        }
+        .aibot-root--intro .aibot-chip{
+            opacity:0;
+            transform:translateY(8px);
+            animation:aibot-intro-chip 0.48s cubic-bezier(.22,1,.36,1) forwards;
+        }
+        .aibot-root--intro .aibot-chip:nth-child(1){animation-delay:0.48s;}
+        .aibot-root--intro .aibot-chip:nth-child(2){animation-delay:0.56s;}
+        .aibot-root--intro .aibot-chip:nth-child(3){animation-delay:0.64s;}
+        @keyframes aibot-intro-fade-up{
+            to{opacity:1;transform:translateY(0);}
+        }
+        @keyframes aibot-intro-chip{
+            to{opacity:1;transform:translateY(0);}
+        }
+        .aibot-root--intro .aibot-composer-wrap{
+            opacity:0;
+            transform:translateY(22px);
+            animation:aibot-intro-composer 0.65s cubic-bezier(.22,1,.36,1) 0.35s forwards;
+        }
+        @keyframes aibot-intro-composer{
+            to{opacity:1;transform:translateY(0);}
+        }
+        .aibot-root--intro .aibot-panel-nav{
+            opacity:0;
+            transform:translateX(22px);
+            animation:aibot-intro-panel 0.62s cubic-bezier(.22,1,.36,1) 0.22s forwards;
+        }
+        @keyframes aibot-intro-panel{
+            from{opacity:0;transform:translateX(22px);}
+            to{opacity:1;transform:translateX(0);}
+        }
+    }
+    @media (max-width:900px) and (prefers-reduced-motion: no-preference){
+        .aibot-root--intro .aibot-panel-nav{
+            animation-name:aibot-intro-panel-mob;
+        }
+        @keyframes aibot-intro-panel-mob{
+            from{opacity:0;transform:translateY(16px);}
+            to{opacity:1;transform:translateY(0);}
+        }
+    }
 </style>
 
 <script>
 (function () {
     const root = document.querySelector('.aibot-root');
     if (!root) return;
+    if (root.classList.contains('aibot-root--intro')) {
+        var endIntro = function () {
+            root.classList.remove('aibot-root--intro');
+        };
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            endIntro();
+        } else {
+            window.setTimeout(endIntro, 1180);
+        }
+    }
     const chatUrl = root.dataset.chatUrl || '';
     const csrfToken = root.dataset.csrf || '';
     const speakCheckbox = document.getElementById('aibot-speak-check');

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -14,8 +15,13 @@ use Modules\Account\Models\Bank;
 use Modules\Business\Models\Business;
 use Modules\HRManagement\Models\Department;
 use Modules\HRManagement\Models\Employee;
+use Modules\HRManagement\Models\EmployeeDocument;
 use Modules\HRManagement\Models\JobTitle;
 use Modules\HRManagement\Services\DepartmentService;
+use Modules\HRManagement\Services\EmployeeDocumentService;
+use Modules\HRManagement\Services\EmployeeLeaveBalanceService;
+use Modules\HRManagement\Services\EmployeeOverviewMetricsService;
+use Modules\HRManagement\Services\EmployeeProfilePhotoService;
 use Modules\HRManagement\Services\EmployeeService;
 use Modules\HRManagement\Services\HrPayrollSettingsService;
 use Modules\HRManagement\Services\JobTitleService;
@@ -27,6 +33,10 @@ class HrEmployeeController extends Controller
         private readonly EmployeeService $employeeService,
         private readonly DepartmentService $departmentService,
         private readonly JobTitleService $jobTitleService,
+        private readonly EmployeeOverviewMetricsService $employeeOverviewMetrics,
+        private readonly EmployeeLeaveBalanceService $employeeLeaveBalance,
+        private readonly EmployeeProfilePhotoService $employeeProfilePhoto,
+        private readonly EmployeeDocumentService $employeeDocumentService,
     ) {}
 
     public function index(Request $request): RedirectResponse|View
@@ -45,6 +55,7 @@ class HrEmployeeController extends Controller
             'employees' => $this->employeeService->listForBusiness($business),
             'departments' => $business->departments()->get(),
             'jobTitles' => $business->jobTitles()->get(),
+            'allowanceTypes' => $business->allowanceTypes()->get(),
             'banks' => Bank::query()->orderBy('name')->get(),
             'employmentTypeLabels' => [
                 Employee::EMPLOYMENT_FULL_TIME => 'Full-Time',
@@ -69,6 +80,40 @@ class HrEmployeeController extends Controller
 
         $validator->after(function ($validator) use ($business): void {
             $data = $validator->getData();
+
+            if (! $validator->errors()->has('basic_salary') && ! $validator->errors()->has('salary')) {
+                $basic = round((float) ($data['basic_salary'] ?? 0), 2);
+                $allowanceRaw = $data['allowances'] ?? [];
+                if (! is_array($allowanceRaw)) {
+                    $allowanceRaw = [];
+                }
+                $expected = $basic;
+                $allowanceInputsOk = true;
+                foreach ($business->allowanceTypes()->pluck('id')->all() as $typeId) {
+                    $raw = $allowanceRaw[(string) $typeId] ?? $allowanceRaw[$typeId] ?? null;
+                    if ($raw === null || $raw === '') {
+                        continue;
+                    }
+                    if (! is_numeric($raw)) {
+                        $validator->errors()->add('allowances.'.$typeId, __('Enter a valid amount for each allowance.'));
+                        $allowanceInputsOk = false;
+
+                        continue;
+                    }
+                    $expected += round(max(0, (float) $raw), 2);
+                }
+                if ($allowanceInputsOk) {
+                    $declared = round((float) ($data['salary'] ?? 0), 2);
+                    if (abs($declared - $expected) > 0.02) {
+                        $validator->errors()->add(
+                            'salary',
+                            __('Monthly gross must equal basic salary plus allowance amounts (expected :expected).', [
+                                'expected' => number_format($expected, 2, '.', ''),
+                            ])
+                        );
+                    }
+                }
+            }
 
             $departmentChoice = isset($data['department_id']) ? (string) $data['department_id'] : '';
             if ($departmentChoice === '') {
@@ -106,7 +151,7 @@ class HrEmployeeController extends Controller
         /** @throws ValidationException */
         $validated = $validator->validate();
 
-        DB::transaction(function () use ($business, $validated): void {
+        $employee = DB::transaction(function () use ($business, $validated): Employee {
             $payload = $validated;
 
             if ((string) $payload['department_id'] === Employee::SELECT_NEW_ROW) {
@@ -127,12 +172,138 @@ class HrEmployeeController extends Controller
                 $payload['job_title_id'] = (int) $payload['job_title_id'];
             }
 
-            unset($payload['new_department_name'], $payload['new_job_title_name']);
+            unset($payload['new_department_name'], $payload['new_job_title_name'], $payload['profile_photo']);
 
-            $this->employeeService->create($business, $payload);
+            return $this->employeeService->create($business, $payload);
         });
 
-        return redirect()->route('hr.employees.index')->with('status', 'Employee registered.');
+        if ($request->hasFile('profile_photo')) {
+            $this->employeeProfilePhoto->store($employee, $request->file('profile_photo'));
+        }
+
+        return redirect()->route('hr.employees.index')->with('status', __('Employee created.'));
+    }
+
+    public function show(Request $request, Employee $employee): RedirectResponse|View
+    {
+        $business = Business::currentForNavbar($request->user());
+        abort_if($business === null, 403);
+
+        if (! $this->hrPayrollSettings->optedIn($business)) {
+            return redirect()->route('hr.onboarding');
+        }
+
+        abort_unless($request->user()->businesses()->whereKey($business->id)->exists(), 403);
+        abort_if((int) $employee->business_id !== (int) $business->id, 404);
+
+        $employee->load(['bank', 'department', 'jobTitle', 'employeeAllowances.allowanceType', 'documents', 'leaveRequests']);
+
+        return view('hrmanagement::employees.show', [
+            'business' => $business,
+            'employee' => $employee,
+            'overviewMetrics' => $this->employeeOverviewMetrics->forEmployee($business, $employee),
+            'documentCategories' => EmployeeDocument::CATEGORIES,
+            'leaveBalanceSummary' => $this->employeeLeaveBalance->yearlySummary($business, $employee),
+        ]);
+    }
+
+    public function storeProfilePhoto(Request $request, Employee $employee): RedirectResponse
+    {
+        $business = Business::currentForNavbar($request->user());
+        abort_if($business === null, 403);
+        if (! $this->hrPayrollSettings->optedIn($business)) {
+            return redirect()->route('hr.onboarding');
+        }
+        abort_unless($request->user()->businesses()->whereKey($business->id)->exists(), 403);
+        abort_if((int) $employee->business_id !== (int) $business->id, 404);
+
+        $request->validate([
+            'profile_photo' => ['required', 'image', 'max:4096'],
+        ]);
+
+        $this->employeeProfilePhoto->store($employee, $request->file('profile_photo'));
+
+        return redirect()->route('hr.employees.show', $employee)->with('status', __('Profile photo updated.'));
+    }
+
+    public function destroyProfilePhoto(Request $request, Employee $employee): RedirectResponse
+    {
+        $business = Business::currentForNavbar($request->user());
+        abort_if($business === null, 403);
+        if (! $this->hrPayrollSettings->optedIn($business)) {
+            return redirect()->route('hr.onboarding');
+        }
+        abort_unless($request->user()->businesses()->whereKey($business->id)->exists(), 403);
+        abort_if((int) $employee->business_id !== (int) $business->id, 404);
+
+        $this->employeeProfilePhoto->delete($employee);
+
+        return redirect()->route('hr.employees.show', $employee)->with('status', __('Profile photo removed.'));
+    }
+
+    public function storeDocument(Request $request, Employee $employee): RedirectResponse
+    {
+        $business = Business::currentForNavbar($request->user());
+        abort_if($business === null, 403);
+        if (! $this->hrPayrollSettings->optedIn($business)) {
+            return redirect()->route('hr.onboarding');
+        }
+        abort_unless($request->user()->businesses()->whereKey($business->id)->exists(), 403);
+        abort_if((int) $employee->business_id !== (int) $business->id, 404);
+
+        $validated = $request->validate([
+            'document_category' => ['required', 'string', Rule::in(EmployeeDocument::CATEGORIES)],
+            'document_file' => [
+                'required',
+                'file',
+                'max:15360',
+                'mimes:pdf,doc,docx,jpg,jpeg,png,gif,webp,txt,rtf,xlsx,xls,ppt,pptx,csv',
+            ],
+        ]);
+
+        $this->employeeDocumentService->store(
+            $employee,
+            $request->file('document_file'),
+            $validated['document_category'],
+            $request->user()->id,
+        );
+
+        return redirect()->to(route('hr.employees.show', $employee).'#documents')
+            ->with('status', __('Document uploaded.'));
+    }
+
+    public function downloadDocument(Request $request, Employee $employee, EmployeeDocument $document)
+    {
+        $business = Business::currentForNavbar($request->user());
+        abort_if($business === null, 403);
+        if (! $this->hrPayrollSettings->optedIn($business)) {
+            return redirect()->route('hr.onboarding');
+        }
+        abort_unless($request->user()->businesses()->whereKey($business->id)->exists(), 403);
+        abort_if((int) $employee->business_id !== (int) $business->id, 404);
+        abort_unless((int) $document->employee_id === (int) $employee->id, 404);
+        abort_unless((int) $document->business_id === (int) $business->id, 404);
+        abort_unless(Storage::disk('public')->exists($document->stored_path), 404);
+
+        return Storage::disk('public')->download($document->stored_path, $document->original_filename);
+    }
+
+    public function destroyDocument(Request $request, Employee $employee, EmployeeDocument $document): RedirectResponse
+    {
+        $business = Business::currentForNavbar($request->user());
+        abort_if($business === null, 403);
+        if (! $this->hrPayrollSettings->optedIn($business)) {
+            return redirect()->route('hr.onboarding');
+        }
+        abort_unless($request->user()->businesses()->whereKey($business->id)->exists(), 403);
+        abort_if((int) $employee->business_id !== (int) $business->id, 404);
+        abort_unless((int) $document->employee_id === (int) $employee->id, 404);
+        abort_unless((int) $document->business_id === (int) $business->id, 404);
+
+        $this->employeeDocumentService->delete($document);
+
+        return redirect()->to(route('hr.employees.show', $employee).'#documents')
+            ->with('status', __('Document removed.'));
     }
 
     /** @return array<string, mixed> */
@@ -140,6 +311,7 @@ class HrEmployeeController extends Controller
     {
         return [
             'full_name' => ['required', 'string', 'max:255'],
+            'profile_photo' => ['nullable', 'image', 'max:4096'],
             'date_of_birth' => ['required', 'date', 'before:today'],
             'nic_passport_number' => [
                 'required', 'string', 'max:64',
@@ -164,6 +336,10 @@ class HrEmployeeController extends Controller
             'new_department_name' => ['nullable', 'string', 'max:255'],
             'date_of_joining' => ['required', 'date'],
             'employment_type' => ['required', 'string', Rule::in(Employee::EMPLOYMENT_TYPES)],
+
+            'basic_salary' => ['required', 'numeric', 'min:0', 'max:999999999.99'],
+            'salary' => ['required', 'numeric', 'min:0', 'max:999999999.99'],
+            'allowances' => ['nullable', 'array'],
 
             'emergency_contact_name' => ['required', 'string', 'max:255'],
             'emergency_contact_relationship' => ['required', 'string', 'max:120'],

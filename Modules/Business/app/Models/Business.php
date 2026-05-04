@@ -10,9 +10,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Modules\Account\Models\Bill;
 use Modules\Account\Models\Loan;
 use Modules\Account\Models\Rental;
+use Modules\HRManagement\Models\AllowanceType;
 use Modules\HRManagement\Models\Department;
 use Modules\HRManagement\Models\Employee;
+use Modules\HRManagement\Models\HrBusinessHoliday;
+use Modules\HRManagement\Models\HrComplaint;
 use Modules\HRManagement\Models\JobTitle;
+use Modules\HRManagement\Models\LeaveRequest;
 use Modules\Settings\Concerns\HasSettings;
 
 class Business extends Model
@@ -107,6 +111,28 @@ class Business extends Model
     public function jobTitles(): HasMany
     {
         return $this->hasMany(JobTitle::class)->orderBy('name')->orderBy('id');
+    }
+
+    public function allowanceTypes(): HasMany
+    {
+        return $this->hasMany(AllowanceType::class)->orderBy('sort_order')->orderBy('name')->orderBy('id');
+    }
+
+    public function leaveRequests(): HasMany
+    {
+        return $this->hasMany(LeaveRequest::class)->orderByDesc('created_at');
+    }
+
+    /** Grievances / HR issues logged against this business (internal inbox). */
+    public function hrComplaints(): HasMany
+    {
+        return $this->hasMany(HrComplaint::class)->orderByDesc('created_at');
+    }
+
+    /** Company-wide public holidays for calendars and payroll (reference). */
+    public function hrHolidays(): HasMany
+    {
+        return $this->hasMany(HrBusinessHoliday::class)->orderBy('holiday_date')->orderBy('id');
     }
 
     public static function allForNavbar(?User $user): Collection

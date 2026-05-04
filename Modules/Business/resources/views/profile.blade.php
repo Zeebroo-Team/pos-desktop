@@ -558,78 +558,6 @@ body.business-pro-avatar-modal-open{overflow:hidden;}
                     </button>
                 </div>
                 <hr class="business-pro-brand-split" aria-hidden="true">
-                @php
-                    $gp = $googleBp ?? [];
-                    $gpScopeOn = (bool) ($gp['manageScopeConfigured'] ?? false);
-                    $gpOAuth = (bool) ($gp['oauthConnected'] ?? false);
-                    $gpLinkedRes = trim((string) ($business->google_location_resource ?? ''));
-                    $gpLinked = $gpLinkedRes !== '';
-                    $gpDispTitle = trim((string) ($business->google_location_title_cache ?? ''));
-                @endphp
-                <p class="business-pro-pane-subhead" style="margin-top:0;">Google Business Profile</p>
-                @if (! $gpScopeOn)
-                    <p class="muted" style="font-size:13px;line-height:1.5;margin:-4px 0 16px;">
-                        Listing link and import are disabled. Set <code>GOOGLE_BUSINESS_PROFILE_SCOPE=true</code> in <code>.env</code>,
-                        enable the Google Account Management and Business Information APIs for your OAuth project, optionally set
-                        <code>GOOGLE_OAUTH_PROMPT=consent</code> once, then reconnect Google.
-                    </p>
-                @elseif (! $gpOAuth)
-                    <p class="muted" style="font-size:13px;line-height:1.5;margin:-4px 0 16px;">
-                        {{ __('Connect Google in') }}
-                        <a href="{{ route('app-connection.index') }}">{{ __('App connections') }}</a>{{ __('. After enabling Business Profile scope, use Reconnect to grant access.') }}
-                    </p>
-                @else
-                    <div
-                        id="googleBpRoot"
-                        class="business-pro-gbp"
-                        data-csrf="{{ csrf_token() }}"
-                        data-url-locations="{{ route('business.profile.google.locations') }}"
-                        data-url-link="{{ route('business.profile.google.link') }}"
-                        data-url-unlink="{{ route('business.profile.google.unlink') }}"
-                        data-url-import="{{ route('business.profile.google.import') }}"
-                    >
-                        <p class="business-pro-gbp-hint muted">
-                            Load your verified Google listings, choose one, and link it to this SociBiz profile. Import copies the Business Profile description into the fields below (you still save with “Save brand profile”).
-                        </p>
-                        <div class="business-pro-gbp-row">
-                            <button type="button" class="linkbtn" id="googleBpLoad" style="padding:9px 16px;font-size:13px;">
-                                <i class="fa fa-download"></i> Load listings
-                            </button>
-                            <select id="googleBpSelect" class="business-pro-gbp-select" disabled autocomplete="off" aria-label="Google Business Profile listing">
-                                <option value="">{{ __('Choose a listing…') }}</option>
-                            </select>
-                            <button type="button" class="linkbtn" id="googleBpLink" style="padding:9px 16px;font-size:13px;" disabled>
-                                <i class="fa fa-link"></i> Link
-                            </button>
-                        </div>
-                        @if ($gpLinked)
-                            <div class="business-pro-gbp-linked" id="googleBpLinkedBanner">
-                                <p class="business-pro-gbp-linked-title">
-                                    <i class="fa fa-circle-check" style="color:#16a34a;"></i>
-                                    Linked:
-                                    @if ($gpDispTitle !== '')
-                                        <strong>{{ $gpDispTitle }}</strong>
-                                    @endif
-                                    <code style="display:block;margin-top:6px;word-break:break-all;">{{ $gpLinkedRes }}</code>
-                                </p>
-                                <div class="business-pro-gbp-actions">
-                                    <label class="business-pro-gbp-overwrite">
-                                        <input type="checkbox" id="googleBpOverwriteName" value="1">
-                                        <span>Overwrite SociBiz business name</span>
-                                    </label>
-                                    <button type="button" class="linkbtn" id="googleBpImport" style="padding:9px 16px;font-size:13px;">
-                                        <i class="fa fa-file-import"></i> Import description
-                                    </button>
-                                    <button type="button" class="linkbtn" id="googleBpUnlink"
-                                        style="padding:9px 16px;font-size:13px;background:color-mix(in srgb,var(--card)94%,transparent);color:var(--text);border:1px solid color-mix(in srgb,#ef4444 32%,var(--border));">
-                                        <i class="fa fa-link-slash"></i> Unlink
-                                    </button>
-                                </div>
-                            </div>
-                        @endif
-                        <div class="business-pro-gbp-msg" id="googleBpMsg" aria-live="polite"></div>
-                    </div>
-                @endif
                 <p class="business-pro-pane-subhead">Company profile</p>
                 <form class="business-pro-brand-form" method="post" action="{{ route('business.profile.brand.update') }}"
                     data-brand-copy-url="{{ route('business.profile.brand.copy.generate') }}">
@@ -744,6 +672,80 @@ body.business-pro-avatar-modal-open{overflow:hidden;}
 
             <div id="business-pro-panel-settings" class="business-pro-pane" role="tabpanel" aria-labelledby="business-pro-tab-settings" aria-hidden="true">
                 <p class="business-pro-pane-head">Configuration</p>
+                @php
+                    $gp = $googleBp ?? [];
+                    $gpScopeOn = (bool) ($gp['manageScopeConfigured'] ?? false);
+                    $gpOAuth = (bool) ($gp['oauthConnected'] ?? false);
+                    $gpLinkedRes = trim((string) ($business->google_location_resource ?? ''));
+                    $gpLinked = $gpLinkedRes !== '';
+                    $gpDispTitle = trim((string) ($business->google_location_title_cache ?? ''));
+                @endphp
+                <p class="business-pro-pane-subhead" style="margin-top:0;">Google Business Profile</p>
+                @if (! $gpScopeOn)
+                    <p class="muted" style="font-size:13px;line-height:1.5;margin:-4px 0 16px;">
+                        Listing link and import are disabled. Set <code>GOOGLE_BUSINESS_PROFILE_SCOPE=true</code> in <code>.env</code>,
+                        enable the Google Account Management and Business Information APIs for your OAuth project, optionally set
+                        <code>GOOGLE_OAUTH_PROMPT=consent</code> once, then reconnect Google.
+                    </p>
+                @elseif (! $gpOAuth)
+                    <p class="muted" style="font-size:13px;line-height:1.5;margin:-4px 0 16px;">
+                        {{ __('Connect Google in') }}
+                        <a href="{{ route('app-connection.index') }}">{{ __('App connections') }}</a>{{ __('. After enabling Business Profile scope, use Reconnect to grant access.') }}
+                    </p>
+                @else
+                    <div
+                        id="googleBpRoot"
+                        class="business-pro-gbp"
+                        data-csrf="{{ csrf_token() }}"
+                        data-url-locations="{{ route('business.profile.google.locations') }}"
+                        data-url-link="{{ route('business.profile.google.link') }}"
+                        data-url-unlink="{{ route('business.profile.google.unlink') }}"
+                        data-url-import="{{ route('business.profile.google.import') }}"
+                    >
+                        <p class="business-pro-gbp-hint muted">
+                            Load your verified Google listings and link one to this SociBiz business. <strong>Import description</strong> fills the short and full description fields on the <strong>Brand</strong> tab — switch to Brand to review and click <strong>Save brand profile</strong>.
+                        </p>
+                        <div class="business-pro-gbp-row">
+                            <button type="button" class="linkbtn" id="googleBpLoad" style="padding:9px 16px;font-size:13px;">
+                                <i class="fa fa-download"></i> Load listings
+                            </button>
+                            <select id="googleBpSelect" class="business-pro-gbp-select" disabled autocomplete="off" aria-label="Google Business Profile listing">
+                                <option value="">{{ __('Choose a listing…') }}</option>
+                            </select>
+                            <button type="button" class="linkbtn" id="googleBpLink" style="padding:9px 16px;font-size:13px;" disabled>
+                                <i class="fa fa-link"></i> Link
+                            </button>
+                        </div>
+                        @if ($gpLinked)
+                            <div class="business-pro-gbp-linked" id="googleBpLinkedBanner">
+                                <p class="business-pro-gbp-linked-title">
+                                    <i class="fa fa-circle-check" style="color:#16a34a;"></i>
+                                    Linked:
+                                    @if ($gpDispTitle !== '')
+                                        <strong>{{ $gpDispTitle }}</strong>
+                                    @endif
+                                    <code style="display:block;margin-top:6px;word-break:break-all;">{{ $gpLinkedRes }}</code>
+                                </p>
+                                <div class="business-pro-gbp-actions">
+                                    <label class="business-pro-gbp-overwrite">
+                                        <input type="checkbox" id="googleBpOverwriteName" value="1">
+                                        <span>Overwrite SociBiz business name</span>
+                                    </label>
+                                    <button type="button" class="linkbtn" id="googleBpImport" style="padding:9px 16px;font-size:13px;">
+                                        <i class="fa fa-file-import"></i> Import description
+                                    </button>
+                                    <button type="button" class="linkbtn" id="googleBpUnlink"
+                                        style="padding:9px 16px;font-size:13px;background:color-mix(in srgb,var(--card)94%,transparent);color:var(--text);border:1px solid color-mix(in srgb,#ef4444 32%,var(--border));">
+                                        <i class="fa fa-link-slash"></i> Unlink
+                                    </button>
+                                </div>
+                            </div>
+                        @endif
+                        <div class="business-pro-gbp-msg" id="googleBpMsg" aria-live="polite"></div>
+                    </div>
+                @endif
+                <hr class="business-pro-brand-split" style="margin-top:8px;" aria-hidden="true">
+                <p class="business-pro-pane-subhead">More settings</p>
                 <a href="{{ route('settings.business') }}" class="business-pro-settingtile">
                     <div>
                         <span>Business settings</span>
@@ -1720,7 +1722,7 @@ body.business-pro-avatar-modal-open{overflow:hidden;}
                     var h1 = document.querySelector('.business-pro-title');
                     if (h1) h1.textContent = String(r.data.name);
                 }
-                flash('Description imported — review and click Save brand profile.', true);
+                flash('Description imported — open the Brand tab to review and click Save brand profile.', true);
             }).catch(function () {
                 flash('Could not reach the server.', false);
             }).finally(function () {

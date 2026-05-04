@@ -4,6 +4,7 @@ namespace Modules\HRManagement\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Modules\Account\Models\Bank;
 use Modules\Business\Models\Business;
 
@@ -40,6 +41,8 @@ class Employee extends Model
         'department_id',
         'date_of_joining',
         'employment_type',
+        'basic_salary',
+        'salary',
         'emergency_contact_name',
         'emergency_contact_relationship',
         'emergency_contact_phone',
@@ -57,6 +60,8 @@ class Employee extends Model
         return [
             'date_of_birth' => 'date',
             'date_of_joining' => 'date',
+            'basic_salary' => 'decimal:2',
+            'salary' => 'decimal:2',
         ];
     }
 
@@ -80,6 +85,26 @@ class Employee extends Model
         return $this->belongsTo(JobTitle::class);
     }
 
+    public function employeeAllowances(): HasMany
+    {
+        return $this->hasMany(EmployeeAllowance::class)->orderBy('id');
+    }
+
+    public function leaveRequests(): HasMany
+    {
+        return $this->hasMany(LeaveRequest::class)->orderByDesc('created_at');
+    }
+
+    public function hrComplaints(): HasMany
+    {
+        return $this->hasMany(HrComplaint::class)->orderByDesc('created_at');
+    }
+
+    public function documents(): HasMany
+    {
+        return $this->hasMany(EmployeeDocument::class, 'employee_id')->orderByDesc('created_at');
+    }
+
     public function employmentTypeLabel(): string
     {
         return match ($this->employment_type) {
@@ -88,5 +113,38 @@ class Employee extends Model
             self::EMPLOYMENT_CONTRACT => 'Contract',
             default => $this->employment_type,
         };
+    }
+
+    /** Public URL for stored profile photo, or null. */
+    public function profilePhotoUrl(): ?string
+    {
+        if (! filled($this->profile_photo_path)) {
+            return null;
+        }
+
+        return asset('storage/'.$this->profile_photo_path);
+    }
+
+    public function hasProfilePhoto(): bool
+    {
+        return filled($this->profile_photo_path);
+    }
+
+    /** Two-letter initials for avatar placeholder. */
+    public function avatarInitials(): string
+    {
+        $name = trim((string) $this->full_name);
+        if ($name === '') {
+            return '?';
+        }
+        $parts = preg_split('/\s+/u', $name) ?: [];
+        if (count($parts) >= 2) {
+            $a = mb_substr($parts[0], 0, 1);
+            $b = mb_substr($parts[count($parts) - 1], 0, 1);
+
+            return mb_strtoupper($a.$b, 'UTF-8');
+        }
+
+        return mb_strtoupper(mb_substr($parts[0], 0, min(2, mb_strlen($parts[0]))), 'UTF-8');
     }
 }

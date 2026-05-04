@@ -10,12 +10,20 @@ use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Modules\Account\Models\Account;
 use Modules\Business\Models\Business;
+use Modules\HRManagement\Services\DepartmentEmployeeGrowthChartService;
+use Modules\HRManagement\Services\HrHubInboxService;
+use Modules\HRManagement\Services\HrHubSummaryService;
 use Modules\HRManagement\Services\HrPayrollSettingsService;
+use Modules\HRManagement\Services\HrUpcomingBirthdaysService;
 
 class HRManagementController extends Controller
 {
     public function __construct(
         private readonly HrPayrollSettingsService $hrPayrollSettings,
+        private readonly HrHubSummaryService $hrHubSummary,
+        private readonly DepartmentEmployeeGrowthChartService $employeeGrowthChart,
+        private readonly HrUpcomingBirthdaysService $hrUpcomingBirthdays,
+        private readonly HrHubInboxService $hrHubInbox,
     ) {}
 
     public function index(Request $request): RedirectResponse|View
@@ -37,6 +45,13 @@ class HRManagementController extends Controller
         return view('hrmanagement::index', [
             'business' => $business,
             'employeeBandLabel' => $bandLabels[$this->hrPayrollSettings->employeeCountBand($business) ?? ''] ?? null,
+            'hrSummary' => $this->hrHubSummary->forBusiness($business),
+            'headcountChart' => $this->employeeGrowthChart->buildCompanyHeadcountSeries($business),
+            'upcomingBirthdays' => $this->hrUpcomingBirthdays->upcomingWithinDays($business),
+            'upcomingBirthdaysWindowDays' => HrUpcomingBirthdaysService::DEFAULT_WINDOW_DAYS,
+            'hrPendingLeaveCount' => $this->hrHubInbox->pendingLeaveRequestsCount($business),
+            'hrInboxComplaints' => $this->hrHubInbox->openComplaints($business),
+            'hrInboxEmployees' => $this->hrHubInbox->employeesForSelect($business),
         ]);
     }
 

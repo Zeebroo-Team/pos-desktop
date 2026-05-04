@@ -23,6 +23,35 @@ class EmployeeService
             }
         }
 
-        return $business->employees()->create($data);
+        $allowances = $data['allowances'] ?? [];
+        unset($data['allowances']);
+
+        foreach (['basic_salary', 'salary'] as $key) {
+            if (array_key_exists($key, $data)) {
+                $data[$key] = round((float) $data[$key], 2);
+            }
+        }
+
+        $employee = $business->employees()->create($data);
+
+        if (is_array($allowances)) {
+            $typeIds = $business->allowanceTypes()->pluck('id')->all();
+            foreach ($typeIds as $typeId) {
+                $raw = $allowances[(string) $typeId] ?? $allowances[$typeId] ?? null;
+                if ($raw === null || $raw === '') {
+                    continue;
+                }
+                $amount = round(max(0, (float) $raw), 2);
+                if ($amount <= 0) {
+                    continue;
+                }
+                $employee->employeeAllowances()->create([
+                    'allowance_type_id' => $typeId,
+                    'amount' => $amount,
+                ]);
+            }
+        }
+
+        return $employee;
     }
 }
