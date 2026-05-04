@@ -2,14 +2,23 @@
 
 use Illuminate\Support\Facades\Route;
 use Modules\HRManagement\Http\Controllers\HrAllowanceTypeController;
-use Modules\HRManagement\Http\Controllers\HrComplaintController;
 use Modules\HRManagement\Http\Controllers\HrBusinessHolidayController;
+use Modules\HRManagement\Http\Controllers\HrComplaintController;
 use Modules\HRManagement\Http\Controllers\HrDepartmentController;
 use Modules\HRManagement\Http\Controllers\HrEmployeeController;
+use Modules\HRManagement\Http\Controllers\HrEmployeePortalController;
 use Modules\HRManagement\Http\Controllers\HrJobTitleController;
 use Modules\HRManagement\Http\Controllers\HrLeaveRequestController;
 use Modules\HRManagement\Http\Controllers\HRManagementController;
 use Modules\HRManagement\Http\Controllers\HrPayrollController;
+
+Route::get('hr-portal/login', [HrEmployeePortalController::class, 'showLogin'])->name('hr.portal.login');
+Route::post('hr-portal/login', [HrEmployeePortalController::class, 'login'])->name('hr.portal.login.submit');
+
+Route::middleware('auth')->group(function (): void {
+    Route::get('hr-portal', [HrEmployeePortalController::class, 'dashboard'])->name('hr.portal.dashboard');
+    Route::get('hr-portal/profile', [HrEmployeePortalController::class, 'profile'])->name('hr.portal.profile');
+});
 
 Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::get('hr-management', [HRManagementController::class, 'index'])->name('hr.index');

@@ -3,7 +3,9 @@
 namespace Modules\Settings\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
@@ -24,6 +26,10 @@ class SettingsController extends Controller
 
     public function user(Request $request, SettingsService $settingsService)
     {
+        if ($redirect = $this->redirectHrPortalOnlyFromUserSettings($request)) {
+            return $redirect;
+        }
+
         $user = $request->user();
 
         return $this->renderSettingsPage(
@@ -37,6 +43,10 @@ class SettingsController extends Controller
 
     public function business(Request $request, SettingsService $settingsService)
     {
+        if ($redirect = $this->redirectHrPortalOnlyFromBusinessSettings($request)) {
+            return $redirect;
+        }
+
         $business = $this->resolveBusinessScope($request);
 
         return $this->renderSettingsPage(
@@ -55,6 +65,16 @@ class SettingsController extends Controller
             'key' => ['required', 'string', 'max:100'],
             'value' => ['nullable'],
         ]);
+
+        if ($validated['scope'] === 'business') {
+            if ($redirect = $this->redirectHrPortalOnlyFromBusinessSettings($request)) {
+                return $redirect;
+            }
+        } elseif ($validated['scope'] === 'user') {
+            if ($redirect = $this->redirectHrPortalOnlyFromUserSettings($request)) {
+                return $redirect;
+            }
+        }
 
         $user = $request->user();
         $scope = $validated['scope'] === 'business'
@@ -90,6 +110,16 @@ class SettingsController extends Controller
             'key' => ['required', 'string', 'max:100'],
         ]);
 
+        if ($validated['scope'] === 'business') {
+            if ($redirect = $this->redirectHrPortalOnlyFromBusinessSettings($request)) {
+                return $redirect;
+            }
+        } elseif ($validated['scope'] === 'user') {
+            if ($redirect = $this->redirectHrPortalOnlyFromUserSettings($request)) {
+                return $redirect;
+            }
+        }
+
         $user = $request->user();
         $scope = $validated['scope'] === 'business'
             ? $this->resolveBusinessScope($request)
@@ -116,6 +146,16 @@ class SettingsController extends Controller
         $validatedScope = $request->validate([
             'scope' => ['required', 'in:user,business'],
         ]);
+
+        if ($validatedScope['scope'] === 'business') {
+            if ($redirect = $this->redirectHrPortalOnlyFromBusinessSettings($request)) {
+                return $redirect;
+            }
+        } elseif ($validatedScope['scope'] === 'user') {
+            if ($redirect = $this->redirectHrPortalOnlyFromUserSettings($request)) {
+                return $redirect;
+            }
+        }
 
         $user = $request->user();
         $scope = $validatedScope['scope'] === 'business'
@@ -199,9 +239,29 @@ class SettingsController extends Controller
         }
 
         $routeName = $validated['scope'] === 'business' ? 'settings.business' : 'settings.user';
-        $callbackUrl = route($routeName).'?' . http_build_query(['tab' => $validated['tab']]);
+        $callbackUrl = route($routeName).'?'.http_build_query(['tab' => $validated['tab']]);
 
         return redirect()->to($callbackUrl)->with('status', 'Settings saved successfully.');
+    }
+
+    private function redirectHrPortalOnlyFromBusinessSettings(Request $request): ?RedirectResponse
+    {
+        $user = $request->user();
+        if ($user instanceof User && $user->isHrPortalOnlyUser()) {
+            return redirect()->route('hr.portal.dashboard')->with('status', __('Business settings are not available for your employee portal account.'));
+        }
+
+        return null;
+    }
+
+    private function redirectHrPortalOnlyFromUserSettings(Request $request): ?RedirectResponse
+    {
+        $user = $request->user();
+        if ($user instanceof User && $user->isHrPortalOnlyUser()) {
+            return redirect()->route('hr.portal.dashboard')->with('status', __('User settings are not available for your employee portal account.'));
+        }
+
+        return null;
     }
 
     private function resolveBusinessScope(Request $request): ?Business
@@ -293,7 +353,7 @@ class SettingsController extends Controller
         }
 
         return $definitions
-            ->filter(fn (array $definition) => $definition['is_enabled'] && !$definition['is_disabled'])
+            ->filter(fn (array $definition) => $definition['is_enabled'] && ! $definition['is_disabled'])
             ->map(function (array $definition) use ($settings): array {
                 $tab = $this->resolveDefinitionTab($definition);
                 $key = $definition['key'];
@@ -320,7 +380,7 @@ class SettingsController extends Controller
     private function getDefinitionsByScope(string $scopeType): Collection
     {
         $path = base_path('Modules/Settings/database/seeders/settings-fields.json');
-        if (!File::exists($path)) {
+        if (! File::exists($path)) {
             return collect();
         }
 
@@ -374,7 +434,7 @@ class SettingsController extends Controller
                     ? (int) $definition['default']
                     : 0;
             }
-            if (!is_numeric($rawValue)) {
+            if (! is_numeric($rawValue)) {
                 return isset($definition['default']) && is_numeric($definition['default'])
                     ? (int) $definition['default']
                     : 0;

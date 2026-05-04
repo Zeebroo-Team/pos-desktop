@@ -74,6 +74,9 @@ html.emp-modal-open-html,html.emp-modal-open-html body{overflow:hidden;}
     @if(session('status'))
         <div style="margin:0 0 12px;padding:10px 12px;border-radius:10px;border:1px solid color-mix(in srgb,#22c55e 40%,var(--border));background:color-mix(in srgb,#22c55e 9%,transparent);font-size:13px;font-weight:600;">{{ session('status') }}</div>
     @endif
+    @if(session('warning'))
+        <div style="margin:0 0 12px;padding:10px 12px;border-radius:10px;border:1px solid color-mix(in srgb,#f59e0b 45%,var(--border));background:color-mix(in srgb,#f59e0b 10%,transparent);font-size:13px;font-weight:600;">{{ session('warning') }}</div>
+    @endif
     <p class="muted" style="margin:0 0 14px;font-size:13px;line-height:1.45;">
         Employees for <strong style="color:var(--text);">{{ $business->name }}</strong>. Departments and designations live in catalogues—you can extend them inline here or centrally on <a href="{{ route('hr.departments.index') }}" style="color:var(--primary);font-weight:600;">Departments</a> and <a href="{{ route('hr.job-titles.index') }}" style="color:var(--primary);font-weight:600;">Designations</a>. <a href="{{ route('hr.allowance-types.index') }}" style="color:var(--primary);font-weight:600;">Allowance types</a> define payroll add-ons per business. New rows from this save add to the catalogue when you submit. Dates use <strong>Y–M–D</strong> here.
         <a href="{{ route('hr.index') }}" style="color:var(--primary);font-weight:600;">HR hub</a>

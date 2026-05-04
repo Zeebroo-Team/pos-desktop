@@ -2,6 +2,7 @@
 
 namespace Modules\HRManagement\Models;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -29,6 +30,7 @@ class Employee extends Model
     ];
 
     protected $fillable = [
+        'user_id',
         'full_name',
         'date_of_birth',
         'nic_passport_number',
@@ -68,6 +70,17 @@ class Employee extends Model
     public function business(): BelongsTo
     {
         return $this->belongsTo(Business::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /** Employee record linked to this login (HR self-service portal). */
+    public static function findForPortalUser(User $user): ?self
+    {
+        return static::query()->where('user_id', $user->id)->first();
     }
 
     public function bank(): BelongsTo

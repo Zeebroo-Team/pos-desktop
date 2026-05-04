@@ -8,11 +8,13 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Modules\Account\Models\Account;
 use Modules\AppConnection\Models\UserAppConnection;
 use Modules\Business\Models\Business;
+use Modules\HRManagement\Models\Employee;
 use Modules\Settings\Concerns\HasSettings;
 use Spatie\Permission\Traits\HasRoles;
 
@@ -54,5 +56,27 @@ class User extends Authenticatable
     public function appConnections(): HasMany
     {
         return $this->hasMany(UserAppConnection::class);
+    }
+
+    /** Linked HR employee profile (self-service portal), if any. */
+    public function hrEmployee(): HasOne
+    {
+        return $this->hasOne(Employee::class);
+    }
+
+    /**
+     * Employee-only account: has a linked HR employee row and does not own any business (admins always get full app access).
+     */
+    public function isHrPortalOnlyUser(): bool
+    {
+        if ($this->hasRole('admin')) {
+            return false;
+        }
+
+        if (! $this->hrEmployee()->exists()) {
+            return false;
+        }
+
+        return ! $this->businesses()->exists();
     }
 }

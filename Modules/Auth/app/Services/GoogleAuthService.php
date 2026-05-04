@@ -94,6 +94,10 @@ final class GoogleAuthService
         Auth::login($user, true);
         $request->session()->regenerate();
 
+        if ($user->isHrPortalOnlyUser()) {
+            return redirect()->route('hr.portal.dashboard');
+        }
+
         return redirect()->intended(route('dashboard'));
     }
 

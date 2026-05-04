@@ -221,7 +221,11 @@
 .emp-leave-actions{margin-top:4px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
 .emp-leave-submit{padding:10px 20px;font-size:13px;font-weight:700;border-radius:10px;cursor:pointer;font-family:inherit;
     border:1px solid color-mix(in srgb,var(--primary)42%,var(--border));background:color-mix(in srgb,var(--primary)12%,transparent);color:var(--text);}
-.emp-leave-submit:hover{background:color-mix(in srgb,var(--primary)18%,transparent);}
+.emp-leave-submit:hover{
+    background:color-mix(in srgb,var(--primary)18%,transparent);
+    color:var(--text);
+    transform:none;
+}
 .emp-docs-pill{
     font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:2px 8px;border-radius:999px;white-space:nowrap;display:inline-block;
 }
@@ -240,18 +244,29 @@
     border:1px solid color-mix(in srgb,var(--primary)42%,var(--border));
     background:color-mix(in srgb,var(--primary)12%,transparent);color:var(--text);
 }
-.emp-leave-add-btn:hover{background:color-mix(in srgb,var(--primary)18%,transparent);}
+.emp-leave-add-btn:hover{
+    background:color-mix(in srgb,var(--primary)18%,transparent);
+    color:var(--text);
+    transform:none;
+}
 .emp-leave-modal{
     position:fixed;inset:0;z-index:1300;display:none;
 }
 .emp-leave-modal.is-open{display:block;}
 .emp-leave-modal__backdrop{
-    position:absolute;inset:0;border:none;padding:0;margin:0;cursor:pointer;
-    background:rgba(17,24,39,.45);
+    all:unset;
+    position:absolute;inset:0;display:block;cursor:pointer;
+    background:rgba(15,23,42,.46);
+}
+.emp-leave-modal__backdrop:hover,
+.emp-leave-modal__backdrop:focus-visible{
+    background:rgba(15,23,42,.46);
+    transform:none;
+    color:inherit;
 }
 .emp-leave-modal__dialog{
     position:relative;
-    width:min(70vw,980px);
+    width:min(92vw,1120px);
     max-width:calc(100vw - 30px);
     max-height:calc(100vh - 36px);
     overflow:auto;
@@ -261,6 +276,105 @@
     background:var(--card);
     padding:clamp(14px,2.1vmin,20px);
     box-shadow:0 16px 42px rgba(0,0,0,.24);
+}
+.emp-leave-modal__split{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) minmax(280px,1.14fr);
+    gap:clamp(16px,2.8vw,26px);
+    align-items:start;
+}
+@media (max-width:900px){
+    .emp-leave-modal__split{grid-template-columns:1fr;}
+    .emp-leave-preview-col{order:-1;}
+}
+.emp-leave-preview-col{min-width:0;}
+.emp-leave-preview__tag{
+    margin:0 0 8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);
+}
+.emp-leave-preview__watermark{
+    margin:0 0 10px;font-size:11px;font-weight:600;color:color-mix(in srgb,var(--muted)88%,var(--text));
+}
+.emp-leave-preview__sheet{
+    background:#ffffff;
+    color:#111827;
+    border:1px solid #e5e7eb;
+    border-radius:10px;
+    padding:clamp(18px,2.8vmin,26px);
+    min-height:280px;
+    max-height:min(52vh,520px);
+    overflow:auto;
+    box-shadow:0 2px 8px rgba(15,23,42,.08),0 0 0 1px rgba(15,23,42,.04);
+    font-family:ui-serif,Georgia,Cambria,"Times New Roman",Times,serif;
+    font-size:13px;
+    line-height:1.55;
+}
+.emp-leave-preview__sheet p{margin:0 0 12px;}
+.emp-leave-preview__sheet p:last-child{margin-bottom:0;}
+.emp-leave-preview__muted{color:#64748b;font-size:12px;}
+.emp-leave-preview__subject{font-weight:700;margin-bottom:14px;}
+.emp-leave-preview__note{margin-top:12px;padding-top:12px;border-top:1px dashed #e5e7eb;font-style:italic;color:#334155;}
+.emp-leave-preview__sigblock{margin-top:14px;white-space:pre-line;}
+.emp-leave-modal__form-col{
+    min-width:0;
+    border-radius:12px;
+    border:1px solid color-mix(in srgb,var(--border)88%,transparent);
+    background:color-mix(in srgb,var(--card)96%,var(--border));
+    padding:clamp(14px,2.2vmin,20px);
+    box-shadow:0 1px 0 color-mix(in srgb,var(--border)55%,transparent) inset;
+}
+.emp-leave-modal__form-head{
+    margin:0 0 6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);
+}
+.emp-leave-modal__form-lead{
+    margin:0 0 16px;font-size:12px;line-height:1.5;color:var(--muted);max-width:52ch;
+}
+.emp-leave-grid--modal{
+    display:grid;
+    gap:14px;
+    grid-template-columns:1fr;
+}
+@media (min-width:520px){
+    .emp-leave-grid--modal{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+    .emp-leave-grid--modal .emp-leave-field--type,
+    .emp-leave-grid--modal .emp-leave-field--note{
+        grid-column:1/-1;
+    }
+}
+.emp-leave-modal__form-col .emp-leave-field label{
+    font-size:11px;letter-spacing:.05em;margin-bottom:2px;
+}
+.emp-leave-modal__form-col .emp-docs-form__select,
+.emp-leave-modal__form-col input[type="date"]{
+    min-height:44px;
+    box-sizing:border-box;
+    padding-top:10px;padding-bottom:10px;
+}
+.emp-leave-modal__form-col .emp-leave-field textarea{
+    min-height:96px;
+    resize:vertical;
+    line-height:1.45;
+}
+.emp-leave-modal__form-col .emp-docs-form__select:focus,
+.emp-leave-modal__form-col input[type="date"]:focus,
+.emp-leave-modal__form-col .emp-leave-field textarea:focus{
+    outline:none;
+    border-color:color-mix(in srgb,var(--primary)42%,var(--border));
+    box-shadow:0 0 0 3px color-mix(in srgb,var(--primary)14%,transparent);
+}
+.emp-leave-modal__form-col .emp-leave-actions{
+    margin-top:6px;
+    padding-top:16px;
+    border-top:1px solid color-mix(in srgb,var(--border)78%,transparent);
+}
+.emp-leave-modal__form-col .emp-leave-submit{
+    width:100%;
+    min-height:46px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    box-sizing:border-box;
 }
 .emp-leave-modal__head{
     display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px;
@@ -272,9 +386,14 @@
     width:32px;height:32px;border-radius:8px;border:1px solid var(--border);
     background:transparent;color:var(--muted);cursor:pointer;font-size:14px;
 }
-.emp-leave-modal__close:hover{color:var(--text);border-color:color-mix(in srgb,var(--muted)45%,var(--border));}
+.emp-leave-modal__close:hover{
+    color:var(--text);
+    border-color:color-mix(in srgb,var(--muted)45%,var(--border));
+    background:color-mix(in srgb,var(--card)94%,transparent);
+    transform:none;
+}
 @media (max-width:900px){
-    .emp-leave-modal__dialog{width:min(94vw,980px);}
+    .emp-leave-modal__dialog{width:min(94vw,1120px);}
 }
 
 .emp-show-layout{display:grid;grid-template-columns:1fr clamp(182px,22vw,240px);gap:0;min-height:280px;align-items:stretch;}
@@ -836,7 +955,28 @@
                         \Modules\HRManagement\Models\LeaveRequest::STATUS_REJECTED => __('Rejected'),
                     ];
                     $leaveBalanceSummary = $leaveBalanceSummary ?? null;
+                    $leaveLetterPhrases = [
+                        'previewHeading' => __('Letter preview'),
+                        'draftNote' => __('Draft preview — updates automatically as you fill the form.'),
+                        'toLabel' => __('To'),
+                        'hrLine' => __('Human Resources / Management'),
+                        'dateLabel' => __('Date'),
+                        'subjectLabel' => __('Subject'),
+                        'subjectPrefix' => __('Leave application'),
+                        'salutation' => __('Dear Sir/Madam,'),
+                        'body' => __('I, :name (Employee ID :id), respectfully request :leave_type leave for the period :start through :end (:days calendar days, inclusive).'),
+                        'noteLead' => __('Additional details:'),
+                        'closing' => __('Thank you for your consideration.'),
+                        'signOff' => __('Yours sincerely,'),
+                        'placeholderIncomplete' => __('Complete the form beside this preview to generate the letter.'),
+                    ];
+                    $leaveLetterMeta = [
+                        'employeeName' => $employee->full_name,
+                        'employeeId' => (string) $employee->employee_id,
+                        'businessName' => $business->name,
+                    ];
                 @endphp
+                <script type="application/json" id="emp-leave-letter-bundle">@json(['phrases' => $leaveLetterPhrases, 'leaveTypes' => $leaveTypeLabels, 'meta' => $leaveLetterMeta])</script>
 
                 @if($leaveBalanceSummary && isset($leaveBalanceSummary['year'], $leaveBalanceSummary['types']))
                     <section class="emp-leave-summary" aria-labelledby="emp-leave-balance-heading" style="margin-bottom:clamp(14px,2.2vmin,20px);">
@@ -889,7 +1029,7 @@
 
                 <div class="emp-leave-modal @if($hasLeaveRequestErrors) is-open @endif" id="emp-leave-modal" aria-hidden="{{ $hasLeaveRequestErrors ? 'false' : 'true' }}">
                     <button type="button" class="emp-leave-modal__backdrop" id="emp-leave-close-backdrop" aria-label="{{ __('Close') }}"></button>
-                    <section class="emp-leave-modal__dialog emp-leave-card" aria-label="{{ __('New leave request') }}" role="dialog" aria-modal="true" aria-labelledby="emp-leave-modal-title">
+                    <section class="emp-leave-modal__dialog" aria-label="{{ __('New leave request') }}" role="dialog" aria-modal="true" aria-labelledby="emp-leave-modal-title">
                         <div class="emp-leave-modal__head">
                             <h3 class="emp-leave-modal__title" id="emp-leave-modal-title">{{ __('New leave request') }}</h3>
                             <button type="button" class="emp-leave-modal__close" id="emp-leave-close-modal" aria-label="{{ __('Close') }}">
@@ -908,35 +1048,60 @@
                             </div>
                         @endif
 
-                        <form method="post" action="{{ route('hr.employees.leave-requests.store', $employee) }}" class="emp-docs-form">
-                            @csrf
-                            <div class="emp-leave-grid">
-                                <div class="emp-leave-field">
-                                    <label for="emp-leave-type">{{ __('Leave type') }}</label>
-                                    <select name="leave_type" id="emp-leave-type" class="emp-docs-form__select" required>
-                                        <option value="">{{ __('Choose…') }}</option>
-                                        @foreach(\Modules\HRManagement\Models\LeaveRequest::LEAVE_TYPES as $lt)
-                                            <option value="{{ $lt }}" @selected(old('leave_type') === $lt)>{{ $leaveTypeLabels[$lt] ?? $lt }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="emp-leave-field">
-                                    <label for="emp-leave-start">{{ __('From') }}</label>
-                                    <input type="date" name="leave_starts_on" id="emp-leave-start" class="emp-docs-form__select" value="{{ old('leave_starts_on') }}" required>
-                                </div>
-                                <div class="emp-leave-field">
-                                    <label for="emp-leave-end">{{ __('To') }}</label>
-                                    <input type="date" name="leave_ends_on" id="emp-leave-end" class="emp-docs-form__select" value="{{ old('leave_ends_on') }}" required>
-                                </div>
-                                <div class="emp-leave-field emp-leave-grid__full">
-                                    <label for="emp-leave-note">{{ __('Note') }} <span class="muted">({{ __('optional') }})</span></label>
-                                    <textarea name="leave_note" id="emp-leave-note" rows="2" maxlength="2000" placeholder="{{ __('Reason or context') }}">{{ old('leave_note') }}</textarea>
+                        <div class="emp-leave-modal__split">
+                            <div class="emp-leave-preview-col">
+                                <p class="emp-leave-preview__tag" id="emp-leave-preview-heading">{{ $leaveLetterPhrases['previewHeading'] }}</p>
+                                <p class="emp-leave-preview__watermark" id="emp-leave-preview-draft">{{ $leaveLetterPhrases['draftNote'] }}</p>
+                                <div class="emp-leave-preview__sheet" aria-live="polite">
+                                    <p class="emp-leave-preview__muted">
+                                        <span id="leave-prev-to-label"></span><br>
+                                        <strong id="leave-prev-company"></strong><br>
+                                        <span id="leave-prev-hr"></span>
+                                    </p>
+                                    <p class="emp-leave-preview__muted" id="leave-prev-date-line"></p>
+                                    <p class="emp-leave-preview__subject" id="leave-prev-subject"></p>
+                                    <p id="leave-prev-salutation"></p>
+                                    <p id="leave-prev-body"></p>
+                                    <p class="emp-leave-preview__note" id="leave-prev-note-block" hidden></p>
+                                    <p id="leave-prev-closing"></p>
+                                    <p id="leave-prev-signoff"></p>
+                                    <p class="emp-leave-preview__sigblock"><strong id="leave-prev-signatory"></strong></p>
                                 </div>
                             </div>
-                            <div class="emp-leave-actions">
-                                <button type="submit" class="emp-leave-submit">{{ __('Submit leave request') }}</button>
+                            <div class="emp-leave-modal__form-col">
+                                <p class="emp-leave-modal__form-head">{{ __('Request details') }}</p>
+                                <p class="emp-leave-modal__form-lead">{{ __('Choose leave type and dates. The letter preview on the left updates automatically.') }}</p>
+                                <form method="post" action="{{ route('hr.employees.leave-requests.store', $employee) }}" class="emp-docs-form" id="emp-leave-request-form">
+                                    @csrf
+                                    <div class="emp-leave-grid emp-leave-grid--modal">
+                                        <div class="emp-leave-field emp-leave-field--type">
+                                            <label for="emp-leave-type">{{ __('Leave type') }}</label>
+                                            <select name="leave_type" id="emp-leave-type" class="emp-docs-form__select" required>
+                                                <option value="">{{ __('Choose…') }}</option>
+                                                @foreach(\Modules\HRManagement\Models\LeaveRequest::LEAVE_TYPES as $lt)
+                                                    <option value="{{ $lt }}" @selected(old('leave_type') === $lt)>{{ $leaveTypeLabels[$lt] ?? $lt }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        <div class="emp-leave-field">
+                                            <label for="emp-leave-start">{{ __('From') }}</label>
+                                            <input type="date" name="leave_starts_on" id="emp-leave-start" class="emp-docs-form__select" value="{{ old('leave_starts_on') }}" required>
+                                        </div>
+                                        <div class="emp-leave-field">
+                                            <label for="emp-leave-end">{{ __('To') }}</label>
+                                            <input type="date" name="leave_ends_on" id="emp-leave-end" class="emp-docs-form__select" value="{{ old('leave_ends_on') }}" required>
+                                        </div>
+                                        <div class="emp-leave-field emp-leave-field--note">
+                                            <label for="emp-leave-note">{{ __('Note') }} <span class="muted">({{ __('optional') }})</span></label>
+                                            <textarea name="leave_note" id="emp-leave-note" rows="4" maxlength="2000" placeholder="{{ __('Reason or context') }}">{{ old('leave_note') }}</textarea>
+                                        </div>
+                                    </div>
+                                    <div class="emp-leave-actions">
+                                        <button type="submit" class="emp-leave-submit">{{ __('Submit leave request') }}</button>
+                                    </div>
+                                </form>
                             </div>
-                        </form>
+                        </div>
                     </section>
                 </div>
 
@@ -1306,14 +1471,149 @@ document.addEventListener('DOMContentLoaded', function () {
     var openBtn = document.getElementById('emp-leave-open-modal');
     var closeBtn = document.getElementById('emp-leave-close-modal');
     var backdrop = document.getElementById('emp-leave-close-backdrop');
+    var bundleEl = document.getElementById('emp-leave-letter-bundle');
+    var form = document.getElementById('emp-leave-request-form');
     if (!modal || !openBtn || !closeBtn || !backdrop) {
         return;
+    }
+
+    var bundle = {};
+    try {
+        bundle = bundleEl && bundleEl.textContent ? JSON.parse(bundleEl.textContent) : {};
+    } catch (e) {
+        bundle = {};
+    }
+    var phrases = bundle.phrases || {};
+    var leaveTypes = bundle.leaveTypes || {};
+    var meta = bundle.meta || {};
+
+    function formatLongDate(ymd) {
+        if (!ymd || typeof ymd !== 'string') {
+            return '';
+        }
+        var d = new Date(ymd + 'T12:00:00');
+        if (isNaN(d.getTime())) {
+            return ymd;
+        }
+        try {
+            return d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+        } catch (err) {
+            return ymd;
+        }
+    }
+
+    function inclusiveCalendarDays(startStr, endStr) {
+        if (!startStr || !endStr) {
+            return '';
+        }
+        var a = new Date(startStr + 'T12:00:00');
+        var b = new Date(endStr + 'T12:00:00');
+        if (isNaN(a.getTime()) || isNaN(b.getTime()) || b < a) {
+            return '';
+        }
+        return String(Math.round((b - a) / 86400000) + 1);
+    }
+
+    function namedPlaceholders(template, map) {
+        if (!template) {
+            return '';
+        }
+        return template.replace(/:([a-zA-Z_][a-zA-Z0-9_]*)/g, function (_m, key) {
+            return Object.prototype.hasOwnProperty.call(map, key) && map[key] != null ? String(map[key]) : _m;
+        });
+    }
+
+    function syncLeaveLetterPreview() {
+        var typeEl = document.getElementById('emp-leave-type');
+        var startEl = document.getElementById('emp-leave-start');
+        var endEl = document.getElementById('emp-leave-end');
+        var noteEl = document.getElementById('emp-leave-note');
+        var leaveType = typeEl && typeEl.value ? typeEl.value : '';
+        var start = startEl && startEl.value ? startEl.value : '';
+        var end = endEl && endEl.value ? endEl.value : '';
+        var note = noteEl && noteEl.value ? noteEl.value.trim() : '';
+
+        var typeLabel = leaveType && leaveTypes[leaveType] ? leaveTypes[leaveType] : '…';
+
+        var todayStr = formatLongDate(
+            new Date().getFullYear() +
+                '-' +
+                String(new Date().getMonth() + 1).padStart(2, '0') +
+                '-' +
+                String(new Date().getDate()).padStart(2, '0')
+        );
+
+        var setTxt = function (id, text) {
+            var el = document.getElementById(id);
+            if (el) {
+                el.textContent = text || '';
+            }
+        };
+
+        setTxt('leave-prev-to-label', phrases.toLabel || '');
+        setTxt('leave-prev-company', meta.businessName || '');
+        setTxt('leave-prev-hr', phrases.hrLine || '');
+        setTxt(
+            'leave-prev-date-line',
+            (phrases.dateLabel || 'Date') + ': ' + todayStr
+        );
+        setTxt('leave-prev-salutation', phrases.salutation || '');
+        setTxt('leave-prev-closing', phrases.closing || '');
+        setTxt('leave-prev-signoff', phrases.signOff || '');
+        setTxt(
+            'leave-prev-signatory',
+            (meta.employeeName || '') + (meta.employeeId ? '\n' + meta.employeeId : '')
+        );
+
+        var days = inclusiveCalendarDays(start, end);
+        var startLong = formatLongDate(start);
+        var endLong = formatLongDate(end);
+
+        var subjectParts = [phrases.subjectPrefix || ''];
+        if (leaveType) {
+            subjectParts.push(typeLabel);
+        }
+        var subjectCore = subjectParts.filter(Boolean).join(' — ');
+        if (startLong && endLong) {
+            subjectCore += ' (' + startLong + ' – ' + endLong + ')';
+        }
+        setTxt(
+            'leave-prev-subject',
+            (phrases.subjectLabel ? phrases.subjectLabel + ': ' : '') + subjectCore
+        );
+
+        var noteBlock = document.getElementById('leave-prev-note-block');
+        if (noteBlock) {
+            if (note) {
+                noteBlock.hidden = false;
+                noteBlock.textContent = (phrases.noteLead ? phrases.noteLead + ' ' : '') + note;
+            } else {
+                noteBlock.hidden = true;
+                noteBlock.textContent = '';
+            }
+        }
+
+        if (!leaveType || !start || !end || !days) {
+            setTxt('leave-prev-body', phrases.placeholderIncomplete || '');
+            return;
+        }
+
+        var bodyMap = {
+            name: meta.employeeName || '',
+            id: meta.employeeId || '',
+            leave_type: typeLabel,
+            start: startLong,
+            end: endLong,
+            days: days,
+        };
+        setTxt('leave-prev-body', namedPlaceholders(phrases.body || '', bodyMap));
     }
 
     function openLeaveModal() {
         modal.classList.add('is-open');
         modal.setAttribute('aria-hidden', 'false');
         document.body.style.overflow = 'hidden';
+        syncLeaveLetterPreview();
     }
 
     function closeLeaveModal() {
@@ -1331,6 +1631,21 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    if (form) {
+        ['change', 'input'].forEach(function (evt) {
+            form.addEventListener(
+                evt,
+                function () {
+                    if (modal.classList.contains('is-open')) {
+                        syncLeaveLetterPreview();
+                    }
+                },
+                true
+            );
+        });
+    }
+
+    syncLeaveLetterPreview();
     if (modal.classList.contains('is-open')) {
         document.body.style.overflow = 'hidden';
     }

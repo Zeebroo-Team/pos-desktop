@@ -35,5 +35,6 @@
             </a>
         @endif
         <p class="auth-meta">{!! __('No account yet? :link', ['link' => '<a href="'.e(route('register')).'">'.__('Create one').'</a>']) !!}</p>
+        <p class="auth-meta" style="margin-top:14px;">{!! __('Team member? :link', ['link' => '<a href="'.e(route('hr.portal.login')).'">'.__('Employee HR portal').'</a>']) !!}</p>
     </div>
 @endsection

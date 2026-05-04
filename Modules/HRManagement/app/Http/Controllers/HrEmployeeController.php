@@ -6,13 +6,17 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Modules\Account\Models\Bank;
 use Modules\Business\Models\Business;
+use Modules\HRManagement\Mail\EmployeePortalWelcomeMail;
 use Modules\HRManagement\Models\Department;
 use Modules\HRManagement\Models\Employee;
 use Modules\HRManagement\Models\EmployeeDocument;
@@ -21,6 +25,7 @@ use Modules\HRManagement\Services\DepartmentService;
 use Modules\HRManagement\Services\EmployeeDocumentService;
 use Modules\HRManagement\Services\EmployeeLeaveBalanceService;
 use Modules\HRManagement\Services\EmployeeOverviewMetricsService;
+use Modules\HRManagement\Services\EmployeePortalProvisioningService;
 use Modules\HRManagement\Services\EmployeeProfilePhotoService;
 use Modules\HRManagement\Services\EmployeeService;
 use Modules\HRManagement\Services\HrPayrollSettingsService;
@@ -37,6 +42,7 @@ class HrEmployeeController extends Controller
         private readonly EmployeeLeaveBalanceService $employeeLeaveBalance,
         private readonly EmployeeProfilePhotoService $employeeProfilePhoto,
         private readonly EmployeeDocumentService $employeeDocumentService,
+        private readonly EmployeePortalProvisioningService $employeePortalProvisioning,
     ) {}
 
     public function index(Request $request): RedirectResponse|View
@@ -151,7 +157,7 @@ class HrEmployeeController extends Controller
         /** @throws ValidationException */
         $validated = $validator->validate();
 
-        $employee = DB::transaction(function () use ($business, $validated): Employee {
+        [$employee, $portalProvision] = DB::transaction(function () use ($business, $validated): array {
             $payload = $validated;
 
             if ((string) $payload['department_id'] === Employee::SELECT_NEW_ROW) {
@@ -174,11 +180,35 @@ class HrEmployeeController extends Controller
 
             unset($payload['new_department_name'], $payload['new_job_title_name'], $payload['profile_photo']);
 
-            return $this->employeeService->create($business, $payload);
+            $employee = $this->employeeService->create($business, $payload);
+            $provision = $this->employeePortalProvisioning->provisionPortalAccess($employee, $business);
+
+            return [$employee->fresh(), $provision];
         });
 
         if ($request->hasFile('profile_photo')) {
             $this->employeeProfilePhoto->store($employee, $request->file('profile_photo'));
+        }
+
+        if (($portalProvision['scenario'] ?? '') !== 'noop') {
+            try {
+                Mail::to(Str::lower(trim($employee->personal_email)))->send(new EmployeePortalWelcomeMail(
+                    $employee,
+                    $business,
+                    route('hr.portal.login', [], true),
+                    $portalProvision,
+                ));
+            } catch (\Throwable $e) {
+                Log::error('Employee HR portal welcome email failed.', [
+                    'exception' => $e,
+                    'employee_id' => $employee->id,
+                ]);
+
+                return redirect()->route('hr.employees.index')->with(
+                    'warning',
+                    __('Employee created, but the welcome email could not be sent. Share the HR portal link and access details manually.')
+                );
+            }
         }
 
         return redirect()->route('hr.employees.index')->with('status', __('Employee created.'));

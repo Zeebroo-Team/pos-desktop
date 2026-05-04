@@ -50,6 +50,11 @@
             z-index:30;
             overflow:auto;
         }
+        .sidebar--employee-portal{
+            background:linear-gradient(180deg,color-mix(in srgb,var(--primary) 10%,var(--card)),var(--card));
+            border-right:1px solid color-mix(in srgb,var(--primary) 24%,var(--border));
+        }
+        .sidebar--employee-portal .brand:before{content:"HR";}
         .brand{font-weight:800;font-size:19px;letter-spacing:.2px;margin-bottom:16px;display:flex;align-items:center;gap:10px}
         .brand:before{content:"SB";width:28px;height:28px;display:grid;place-items:center;border-radius:8px;background:linear-gradient(135deg,var(--primary),color-mix(in srgb,var(--primary) 45%,#fff));color:#fff;font-size:11px;font-weight:800}
         .menu-section{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin:4px 2px 2px}
@@ -184,7 +189,8 @@
         .muted{color:var(--muted)}
         .chip{display:inline-block;border:1px solid var(--border);padding:6px 12px;border-radius:999px;margin:8px 8px 0 0}
         button,.linkbtn{border:0;border-radius:10px;padding:10px 14px;background:var(--btn-bg);color:#fff;cursor:pointer;text-decoration:none;display:inline-block;transition:all .2s ease}
-        button:hover,.linkbtn:hover{background:var(--btn-hover);color:#111827;transform:translateY(-1px)}
+        button:hover,.linkbtn:hover{background:var(--btn-hover);color:var(--btn-hover-fg);transform:translateY(-1px)}
+        .navbar-portal-meta{font-size:13px;color:var(--muted);font-weight:600;max-width:min(100%,42ch);line-height:1.35}
         @media (max-width:900px){.sidebar{position:static;width:auto;height:auto;border-right:0;border-bottom:1px solid var(--border)}.content{margin-left:0;border-left:0}}
     </style>
 </head>
@@ -192,6 +198,7 @@
 <div class="layout">
     @php
         $minimalAppShell = filter_var($minimalAppShell ?? false, FILTER_VALIDATE_BOOLEAN);
+        $employeePortal = filter_var($employeePortal ?? false, FILTER_VALIDATE_BOOLEAN);
         $chatWorkspace = filter_var($chatWorkspace ?? false, FILTER_VALIDATE_BOOLEAN);
         $navBusiness = \Modules\Business\Models\Business::currentForNavbar(auth()->user());
         $navBusinesses = \Modules\Business\Models\Business::allForNavbar(auth()->user());
@@ -226,9 +233,34 @@
             session()->forget('selected_account_id');
         }
         $showSidebarSettingsSection = $navBusiness && $assignedAccount;
+        if ($employeePortal && isset($portalEmployerBusiness) && $portalEmployerBusiness) {
+            $navBusiness = $portalEmployerBusiness;
+            $navBusinesses = collect([$portalEmployerBusiness]);
+            $accounts = collect();
+            $assignedAccount = null;
+            $showSidebarSettingsSection = false;
+            $showSidebarLoansLink = false;
+            $showSidebarRentalsLink = false;
+            $showSidebarBillsLink = false;
+            $sidebarLoanDueHighlight = false;
+            $sidebarRentalDueHighlight = false;
+            $sidebarBillDueHighlight = false;
+        }
     @endphp
     @unless($minimalAppShell)
-    <aside class="sidebar">
+    <aside class="sidebar{{ $employeePortal ? ' sidebar--employee-portal' : '' }}">
+        @if($employeePortal)
+            <div class="brand">{{ __('HR portal') }}</div>
+            <nav class="menu" aria-label="{{ __('Employee HR portal navigation') }}">
+                <div class="menu-section">{{ __('Self-service') }}</div>
+                <a href="{{ route('hr.portal.dashboard') }}" class="{{ request()->routeIs('hr.portal.dashboard') ? 'active' : '' }}"><i class="fa fa-house" aria-hidden="true"></i><span>{{ __('Home') }}</span></a>
+                <a href="{{ route('hr.portal.profile') }}" class="{{ request()->routeIs('hr.portal.profile') ? 'active' : '' }}"><i class="fa fa-user" aria-hidden="true"></i><span>{{ __('My profile') }}</span></a>
+                @if(Route::has('dashboard') && auth()->user() && ! auth()->user()->isHrPortalOnlyUser())
+                    <div class="menu-section">{{ __('More') }}</div>
+                    <a href="{{ route('dashboard') }}" class="{{ request()->routeIs('dashboard') ? 'active' : '' }}"><i class="fa fa-briefcase" aria-hidden="true"></i><span>{{ __('Workspace') }}</span></a>
+                @endif
+            </nav>
+        @else
         <div class="brand">SociBiz Panel</div>
         <nav class="menu">
             <div class="menu-section">Main</div>
@@ -303,15 +335,47 @@
                 <a href="{{ route('admin.panel') }}" class="{{ request()->routeIs('admin.panel') ? 'active' : '' }}"><i class="fa fa-user-shield"></i><span>Admin Panel</span></a>
             @endif
         </nav>
+        @endif
     </aside>
     @endunless
     <main class="content{{ $minimalAppShell ? ' content--minimal' : '' }}{{ $chatWorkspace ? ' content--chat-workspace' : '' }}">
         <div class="navbar">
             <div>
                 <div class="navtitle">{{ $heading ?? 'Overview' }}</div>
-                <div class="navmeta">Welcome, {{ auth()->user()->name ?? 'User' }}</div>
+                @if($employeePortal && isset($portalEmployee))
+                    <div class="navmeta navbar-portal-meta">{{ $portalEmployee->full_name }} · {{ $portalEmployee->employee_id }}</div>
+                @else
+                    <div class="navmeta">{{ __('Welcome, :name', ['name' => auth()->user()->name ?? __('User')]) }}</div>
+                @endif
             </div>
             <div class="nav-right">
+                @if($employeePortal)
+                    <div class="navchip" title="{{ __('Employer') }}">{{ $portalEmployerBusiness?->name ?? __('Employer') }}</div>
+                    @if(Route::has('dashboard') && auth()->user() && ! auth()->user()->isHrPortalOnlyUser())
+                        <a href="{{ route('dashboard') }}" class="user-trigger" style="font-size:12px;font-weight:650;padding:6px 10px;">
+                            <i class="fa fa-briefcase" aria-hidden="true"></i><span>{{ __('Workspace') }}</span>
+                        </a>
+                    @endif
+                    <div class="user-dropdown">
+                        <button type="button" class="user-trigger" id="userDropdownBtn">
+                            <span class="avatar">{{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}</span>
+                            <span>{{ auth()->user()->name ?? 'User' }}</span>
+                            <i class="fa fa-chevron-down"></i>
+                        </button>
+                        <div class="user-menu" id="userDropdownMenu">
+                            <div class="menu-head">
+                                <div class="menu-name">{{ auth()->user()->name ?? 'User' }}</div>
+                                <div class="menu-email">{{ auth()->user()->email ?? '' }}</div>
+                            </div>
+                            <form method="post" action="{{ route('logout') }}" style="margin-top:6px;">
+                                @csrf
+                                <button type="submit" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;">
+                                    <i class="fa fa-right-from-bracket"></i><span>{{ __('Logout') }}</span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                @else
                 <div class="navchip">{{ now()->format('d M Y') }}</div>
                 @if($navBusiness)
                     <a href="{{ route('business.profile') }}" class="user-trigger nav-business-profile @if(request()->routeIs('business.profile')) nav-business-profile--active @endif" title="Business profile">
@@ -467,6 +531,7 @@
                         </form>
                     </div>
                 </div>
+                @endif
             </div>
         </div>
         <div class="content-inner{{ $chatWorkspace ? ' content-inner--chat-workspace' : '' }}">

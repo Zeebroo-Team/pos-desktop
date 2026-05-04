@@ -11,9 +11,7 @@ use Modules\Auth\Services\AuthService;
 
 class AuthController extends Controller
 {
-    public function __construct(private readonly AuthService $authService)
-    {
-    }
+    public function __construct(private readonly AuthService $authService) {}
 
     public function showLogin(): View
     {
@@ -45,7 +43,12 @@ class AuthController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->route('dashboard');
+        $user = $request->user();
+        if ($user !== null && $user->isHrPortalOnlyUser()) {
+            return redirect()->route('hr.portal.dashboard');
+        }
+
+        return redirect()->intended(route('dashboard'));
     }
 
     public function register(Request $request): RedirectResponse
