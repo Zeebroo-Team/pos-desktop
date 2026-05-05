@@ -17,6 +17,8 @@ use Modules\HRManagement\Models\HrBusinessHoliday;
 use Modules\HRManagement\Models\HrComplaint;
 use Modules\HRManagement\Models\JobTitle;
 use Modules\HRManagement\Models\LeaveRequest;
+use Modules\HRManagement\Models\PayrollCycle;
+use Modules\HRManagement\Models\PayrollRuleSet;
 use Modules\Settings\Concerns\HasSettings;
 
 class Business extends Model
@@ -133,6 +135,16 @@ class Business extends Model
     public function hrHolidays(): HasMany
     {
         return $this->hasMany(HrBusinessHoliday::class)->orderBy('holiday_date')->orderBy('id');
+    }
+
+    public function payrollRuleSets(): HasMany
+    {
+        return $this->hasMany(PayrollRuleSet::class)->orderByDesc('effective_from')->orderByDesc('id');
+    }
+
+    public function payrollCycles(): HasMany
+    {
+        return $this->hasMany(PayrollCycle::class)->orderByDesc('year')->orderByDesc('month')->orderByDesc('id');
     }
 
     public static function allForNavbar(?User $user): Collection

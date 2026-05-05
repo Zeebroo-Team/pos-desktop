@@ -112,6 +112,11 @@ class Employee extends Model
         return $this->hasMany(EmployeeDocument::class, 'employee_id')->orderByDesc('created_at');
     }
 
+    public function payrollItems(): HasMany
+    {
+        return $this->hasMany(PayrollItem::class, 'employee_id')->orderByDesc('id');
+    }
+
     public function employmentTypeLabel(): string
     {
         return match ($this->employment_type) {
