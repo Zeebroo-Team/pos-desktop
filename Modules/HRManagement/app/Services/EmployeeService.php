@@ -5,6 +5,7 @@ namespace Modules\HRManagement\Services;
 use Illuminate\Database\Eloquent\Collection;
 use Modules\Business\Models\Business;
 use Modules\HRManagement\Models\Employee;
+use Modules\HRManagement\Models\EmployeeAllowance;
 
 class EmployeeService
 {
@@ -53,5 +54,26 @@ class EmployeeService
         }
 
         return $employee;
+    }
+
+    /** Recompute monthly gross from basic salary plus allowance rows. */
+    public function recalculateMonthlyGross(Employee $employee): void
+    {
+        $employee->refresh();
+        $basic = round((float) ($employee->basic_salary ?? 0), 2);
+        $allowSum = round((float) $employee->employeeAllowances()->sum('amount'), 2);
+        $employee->forceFill(['salary' => round($basic + $allowSum, 2)])->save();
+    }
+
+    public function updateAllowanceAmount(Employee $employee, int $employeeAllowanceId, float $amount): void
+    {
+        $row = EmployeeAllowance::query()
+            ->where('employee_id', $employee->id)
+            ->whereKey($employeeAllowanceId)
+            ->firstOrFail();
+
+        $row->forceFill(['amount' => round(max(0, $amount), 2)])->save();
+
+        $this->recalculateMonthlyGross($employee->fresh());
     }
 }

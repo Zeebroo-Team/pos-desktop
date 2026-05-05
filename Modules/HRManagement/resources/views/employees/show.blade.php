@@ -427,6 +427,27 @@
 .emp-show__dd{margin:0;font-size:14px;line-height:1.5;color:var(--text);word-break:break-word;}
 .emp-show__dd a{color:var(--primary);font-weight:600;text-decoration:none;}
 .emp-show__dd a:hover{text-decoration:underline;}
+.emp-show__row-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.emp-show__mini-edit{
+    flex-shrink:0;width:30px;height:30px;padding:0;border-radius:8px;border:1px solid color-mix(in srgb,var(--border)92%,transparent);
+    background:color-mix(in srgb,var(--card)94%,transparent);color:var(--muted);cursor:pointer;font-size:12px;line-height:1;
+}
+.emp-show__mini-edit:hover{color:var(--text);border-color:color-mix(in srgb,var(--primary)38%,var(--border));background:color-mix(in srgb,var(--primary)8%,transparent);}
+.emp-show__input{
+    width:100%;max-width:100%;box-sizing:border-box;padding:10px 12px;border-radius:10px;border:1px solid var(--border);
+    background:var(--card);color:var(--text);font-size:14px;font-family:inherit;
+}
+.emp-show__input--textarea{min-height:88px;resize:vertical;line-height:1.45;}
+.emp-show__input--select{min-height:42px;}
+.emp-show__edit-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center;}
+.emp-show__btn-save{
+    padding:8px 14px;font-size:12px;font-weight:700;border-radius:8px;cursor:pointer;font-family:inherit;
+    border:1px solid color-mix(in srgb,var(--primary)42%,var(--border));background:color-mix(in srgb,var(--primary)12%,transparent);color:var(--text);
+}
+.emp-show__btn-save:hover{background:color-mix(in srgb,var(--primary)18%,transparent);}
+.emp-show__btn-cancel{padding:8px 14px;font-size:12px;border-radius:8px;cursor:pointer;font-family:inherit;border:1px solid var(--border);background:transparent;color:var(--muted);}
+.emp-show__btn-cancel:hover{color:var(--text);}
+.emp-show__field-err{margin:8px 0 0;font-size:12px;color:#dc2626;}
 
 .emp-show-tabs{
     width:100%;border-left:1px solid var(--border);
@@ -624,35 +645,17 @@
             >
                 <p class="emp-show-pane-head">Personal details</p>
                 <section class="emp-show__block" aria-label="{{ __('Personal details') }}">
+                    @php
+                        $dobVal = $employee->date_of_birth?->format('Y-m-d');
+                    @endphp
                     <div class="emp-show__rows">
-                        <div class="emp-show__row emp-show__row--full">
-                            <span class="emp-show__dt">Full name</span>
-                            <p class="emp-show__dd">{{ $employee->full_name }}</p>
-                        </div>
-                        <div class="emp-show__row">
-                            <span class="emp-show__dt">Date of birth</span>
-                            <p class="emp-show__dd">{{ $employee->date_of_birth?->format('Y-m-d') ?? '—' }}</p>
-                        </div>
-                        <div class="emp-show__row">
-                            <span class="emp-show__dt">NIC / Passport</span>
-                            <p class="emp-show__dd">{{ $employee->nic_passport_number }}</p>
-                        </div>
-                        <div class="emp-show__row emp-show__row--full">
-                            <span class="emp-show__dt">Permanent address</span>
-                            <p class="emp-show__dd">{{ $employee->permanent_address }}</p>
-                        </div>
-                        <div class="emp-show__row emp-show__row--full">
-                            <span class="emp-show__dt">Current address</span>
-                            <p class="emp-show__dd">{{ $employee->current_address }}</p>
-                        </div>
-                        <div class="emp-show__row">
-                            <span class="emp-show__dt">Phone</span>
-                            <p class="emp-show__dd">{{ $employee->phone_number }}</p>
-                        </div>
-                        <div class="emp-show__row">
-                            <span class="emp-show__dt">Personal email</span>
-                            <p class="emp-show__dd"><a href="mailto:{{ $employee->personal_email }}">{{ $employee->personal_email }}</a></p>
-                        </div>
+                        @include('hrmanagement::employees.partials.editable-field-row', ['label' => __('Full name'), 'field' => 'full_name', 'panel' => 'personal', 'type' => 'text', 'value' => $employee->full_name])
+                        @include('hrmanagement::employees.partials.editable-field-row', ['label' => __('Date of birth'), 'field' => 'date_of_birth', 'panel' => 'personal', 'type' => 'date', 'value' => $dobVal])
+                        @include('hrmanagement::employees.partials.editable-field-row', ['label' => __('NIC / Passport'), 'field' => 'nic_passport_number', 'panel' => 'personal', 'type' => 'text', 'value' => $employee->nic_passport_number])
+                        @include('hrmanagement::employees.partials.editable-field-row', ['label' => __('Permanent address'), 'field' => 'permanent_address', 'panel' => 'personal', 'type' => 'textarea', 'value' => $employee->permanent_address, 'fullWidth' => true])
+                        @include('hrmanagement::employees.partials.editable-field-row', ['label' => __('Current address'), 'field' => 'current_address', 'panel' => 'personal', 'type' => 'textarea', 'value' => $employee->current_address, 'fullWidth' => true])
+                        @include('hrmanagement::employees.partials.editable-field-row', ['label' => __('Phone'), 'field' => 'phone_number', 'panel' => 'personal', 'type' => 'tel', 'value' => $employee->phone_number])
+                        @include('hrmanagement::employees.partials.editable-field-row', ['label' => __('Personal email'), 'field' => 'personal_email', 'panel' => 'personal', 'type' => 'email', 'value' => $employee->personal_email])
                     </div>
                 </section>
             </div>
@@ -660,27 +663,18 @@
             <div id="emp-show-panel-employment" class="emp-show-pane" role="tabpanel" aria-labelledby="emp-show-tab-employment" aria-hidden="true">
                 <p class="emp-show-pane-head">Employment</p>
                 <section class="emp-show__block" aria-label="{{ __('Employment') }}">
+                    @php
+                        $jobTitleSelect = $hrEditJobTitles->mapWithKeys(fn ($j) => [$j->id => $j->name])->all();
+                        $deptSelect = $hrEditDepartments->mapWithKeys(fn ($d) => [$d->id => $d->name])->all();
+                        $employmentSelect = collect(\Modules\HRManagement\Models\Employee::EMPLOYMENT_TYPES)->mapWithKeys(fn ($t) => [$t => $employmentTypeLabels[$t] ?? $t])->all();
+                        $dojVal = $employee->date_of_joining?->format('Y-m-d');
+                    @endphp
                     <div class="emp-show__rows">
-                        <div class="emp-show__row">
-                            <span class="emp-show__dt">Employee ID</span>
-                            <p class="emp-show__dd">{{ $employee->employee_id }}</p>
-                        </div>
-                        <div class="emp-show__row">
-                            <span class="emp-show__dt">Job title</span>
-                            <p class="emp-show__dd">{{ $employee->jobTitle?->name ?? '—' }}</p>
-                        </div>
-                        <div class="emp-show__row">
-                            <span class="emp-show__dt">Department</span>
-                            <p class="emp-show__dd">{{ $employee->department?->name ?? '—' }}</p>
-                        </div>
-                        <div class="emp-show__row">
-                            <span class="emp-show__dt">Date of joining</span>
-                            <p class="emp-show__dd">{{ $employee->date_of_joining?->format('Y-m-d') ?? '—' }}</p>
-                        </div>
-                        <div class="emp-show__row emp-show__row--full">
-                            <span class="emp-show__dt">Employment type</span>
-                            <p class="emp-show__dd">{{ $employee->employmentTypeLabel() }}</p>
-                        </div>
+                        @include('hrmanagement::employees.partials.editable-field-row', ['label' => __('Employee ID'), 'field' => 'employee_id', 'panel' => 'employment', 'type' => 'text', 'value' => $employee->employee_id])
+                        @include('hrmanagement::employees.partials.editable-field-row', ['label' => __('Job title'), 'field' => 'job_title_id', 'panel' => 'employment', 'type' => 'select', 'value' => $employee->job_title_id, 'selectOptions' => $jobTitleSelect])
+                        @include('hrmanagement::employees.partials.editable-field-row', ['label' => __('Department'), 'field' => 'department_id', 'panel' => 'employment', 'type' => 'select', 'value' => $employee->department_id, 'selectOptions' => $deptSelect])
+                        @include('hrmanagement::employees.partials.editable-field-row', ['label' => __('Date of joining'), 'field' => 'date_of_joining', 'panel' => 'employment', 'type' => 'date', 'value' => $dojVal])
+                        @include('hrmanagement::employees.partials.editable-field-row', ['label' => __('Employment type'), 'field' => 'employment_type', 'panel' => 'employment', 'type' => 'select', 'value' => $employee->employment_type, 'selectOptions' => $employmentSelect, 'displayValue' => $employee->employmentTypeLabel()])
                     </div>
                 </section>
             </div>
@@ -689,18 +683,9 @@
                 <p class="emp-show-pane-head">Emergency contact</p>
                 <section class="emp-show__block" aria-label="{{ __('Emergency contact') }}">
                     <div class="emp-show__rows">
-                        <div class="emp-show__row">
-                            <span class="emp-show__dt">Name</span>
-                            <p class="emp-show__dd">{{ $employee->emergency_contact_name }}</p>
-                        </div>
-                        <div class="emp-show__row">
-                            <span class="emp-show__dt">Relationship</span>
-                            <p class="emp-show__dd">{{ $employee->emergency_contact_relationship }}</p>
-                        </div>
-                        <div class="emp-show__row emp-show__row--full">
-                            <span class="emp-show__dt">Phone</span>
-                            <p class="emp-show__dd">{{ $employee->emergency_contact_phone }}</p>
-                        </div>
+                        @include('hrmanagement::employees.partials.editable-field-row', ['label' => __('Name'), 'field' => 'emergency_contact_name', 'panel' => 'emergency', 'type' => 'text', 'value' => $employee->emergency_contact_name])
+                        @include('hrmanagement::employees.partials.editable-field-row', ['label' => __('Relationship'), 'field' => 'emergency_contact_relationship', 'panel' => 'emergency', 'type' => 'text', 'value' => $employee->emergency_contact_relationship])
+                        @include('hrmanagement::employees.partials.editable-field-row', ['label' => __('Phone'), 'field' => 'emergency_contact_phone', 'panel' => 'emergency', 'type' => 'tel', 'value' => $employee->emergency_contact_phone, 'fullWidth' => true])
                     </div>
                 </section>
             </div>
@@ -708,23 +693,14 @@
             <div id="emp-show-panel-bank" class="emp-show-pane" role="tabpanel" aria-labelledby="emp-show-tab-bank" aria-hidden="true">
                 <p class="emp-show-pane-head">Bank account</p>
                 <section class="emp-show__block" aria-label="{{ __('Bank account') }}">
+                    @php
+                        $bankSelect = $banks->mapWithKeys(fn ($b) => [$b->id => $b->name])->all();
+                    @endphp
                     <div class="emp-show__rows">
-                        <div class="emp-show__row emp-show__row--full">
-                            <span class="emp-show__dt">Account holder</span>
-                            <p class="emp-show__dd">{{ $employee->bank_account_holder_name }}</p>
-                        </div>
-                        <div class="emp-show__row">
-                            <span class="emp-show__dt">Bank</span>
-                            <p class="emp-show__dd">{{ $employee->bank?->name ?? '—' }}</p>
-                        </div>
-                        <div class="emp-show__row">
-                            <span class="emp-show__dt">Branch</span>
-                            <p class="emp-show__dd">{{ $employee->bank_branch }}</p>
-                        </div>
-                        <div class="emp-show__row emp-show__row--full">
-                            <span class="emp-show__dt">Account number</span>
-                            <p class="emp-show__dd">{{ $employee->bank_account_number }}</p>
-                        </div>
+                        @include('hrmanagement::employees.partials.editable-field-row', ['label' => __('Account holder'), 'field' => 'bank_account_holder_name', 'panel' => 'bank', 'type' => 'text', 'value' => $employee->bank_account_holder_name, 'fullWidth' => true])
+                        @include('hrmanagement::employees.partials.editable-field-row', ['label' => __('Bank'), 'field' => 'bank_id', 'panel' => 'bank', 'type' => 'select', 'value' => $employee->bank_id, 'selectOptions' => $bankSelect])
+                        @include('hrmanagement::employees.partials.editable-field-row', ['label' => __('Branch'), 'field' => 'bank_branch', 'panel' => 'bank', 'type' => 'text', 'value' => $employee->bank_branch])
+                        @include('hrmanagement::employees.partials.editable-field-row', ['label' => __('Account number'), 'field' => 'bank_account_number', 'panel' => 'bank', 'type' => 'text', 'value' => $employee->bank_account_number, 'fullWidth' => true])
                     </div>
                 </section>
             </div>
@@ -733,18 +709,9 @@
                 <p class="emp-show-pane-head">Statutory references</p>
                 <section class="emp-show__block" aria-label="{{ __('Statutory references') }}">
                     <div class="emp-show__rows">
-                        <div class="emp-show__row">
-                            <span class="emp-show__dt">EPF number</span>
-                            <p class="emp-show__dd">{{ filled($employee->epf_number) ? $employee->epf_number : '—' }}</p>
-                        </div>
-                        <div class="emp-show__row">
-                            <span class="emp-show__dt">ETF number</span>
-                            <p class="emp-show__dd">{{ filled($employee->etf_number) ? $employee->etf_number : '—' }}</p>
-                        </div>
-                        <div class="emp-show__row emp-show__row--full">
-                            <span class="emp-show__dt">Tax TIN</span>
-                            <p class="emp-show__dd">{{ filled($employee->tax_tin) ? $employee->tax_tin : '—' }}</p>
-                        </div>
+                        @include('hrmanagement::employees.partials.editable-field-row', ['label' => __('EPF number'), 'field' => 'epf_number', 'panel' => 'statutory', 'type' => 'text', 'value' => $employee->epf_number, 'displayValue' => filled($employee->epf_number) ? $employee->epf_number : '—', 'required' => false])
+                        @include('hrmanagement::employees.partials.editable-field-row', ['label' => __('ETF number'), 'field' => 'etf_number', 'panel' => 'statutory', 'type' => 'text', 'value' => $employee->etf_number, 'displayValue' => filled($employee->etf_number) ? $employee->etf_number : '—', 'required' => false])
+                        @include('hrmanagement::employees.partials.editable-field-row', ['label' => __('Tax TIN'), 'field' => 'tax_tin', 'panel' => 'statutory', 'type' => 'text', 'value' => $employee->tax_tin, 'displayValue' => filled($employee->tax_tin) ? $employee->tax_tin : '—', 'fullWidth' => true, 'required' => false])
                     </div>
                 </section>
             </div>
@@ -868,27 +835,31 @@
             <div id="emp-show-panel-salary" class="emp-show-pane" role="tabpanel" aria-labelledby="emp-show-tab-salary" aria-hidden="true">
                 <p class="emp-show-pane-head">{{ __('Salary') }}</p>
                 @if ($employee->salary !== null)
+                    @php
+                        $basicDisp = $employee->basic_salary !== null
+                            ? (($bizCurrency !== '' ? $bizCurrency.' ' : '').number_format((float) $employee->basic_salary, abs((float) $employee->basic_salary - round((float) $employee->basic_salary)) < 0.0001 ? 0 : 2))
+                            : '—';
+                    @endphp
                     <section class="emp-show__block" aria-label="{{ __('Compensation on file') }}">
                         <div class="emp-show__rows">
-                            <div class="emp-show__row">
-                                <span class="emp-show__dt">{{ __('Basic salary') }}</span>
-                                <p class="emp-show__dd">
-                                    {{ $bizCurrency !== '' ? $bizCurrency.' ' : '' }}{{ $employee->basic_salary !== null ? number_format((float) $employee->basic_salary, abs((float) $employee->basic_salary - round((float) $employee->basic_salary)) < 0.0001 ? 0 : 2) : '—' }}
-                                </p>
-                            </div>
-                            <div class="emp-show__row">
+                            @include('hrmanagement::employees.partials.editable-field-row', [
+                                'label' => __('Basic salary'),
+                                'field' => 'basic_salary',
+                                'panel' => 'salary',
+                                'type' => 'number',
+                                'numberStep' => '0.01',
+                                'value' => $employee->basic_salary,
+                                'displayValue' => $basicDisp,
+                            ])
+                            <div class="emp-show__row emp-show__row--full">
                                 <span class="emp-show__dt">{{ __('Monthly gross') }}</span>
                                 <p class="emp-show__dd">
                                     <strong>{{ $bizCurrency !== '' ? $bizCurrency.' ' : '' }}{{ number_format((float) $employee->salary, abs((float) $employee->salary - round((float) $employee->salary)) < 0.0001 ? 0 : 2) }}</strong>
                                 </p>
+                                <p class="muted" style="margin:8px 0 0;font-size:12px;line-height:1.45;">{{ __('Updates automatically when you change basic salary or allowances.') }}</p>
                             </div>
                             @foreach($employee->employeeAllowances as $ea)
-                                <div class="emp-show__row">
-                                    <span class="emp-show__dt">{{ __('Allowance: :name', ['name' => $ea->allowanceType?->name ?? __('Type')]) }}</span>
-                                    <p class="emp-show__dd">
-                                        {{ $bizCurrency !== '' ? $bizCurrency.' ' : '' }}{{ number_format((float) $ea->amount, abs((float) $ea->amount - round((float) $ea->amount)) < 0.0001 ? 0 : 2) }}
-                                    </p>
-                                </div>
+                                @include('hrmanagement::employees.partials.editable-allowance-row', ['ea' => $ea, 'employee' => $employee, 'bizCurrency' => $bizCurrency])
                             @endforeach
                         </div>
                     </section>
@@ -1277,6 +1248,48 @@
     });
 })();
 </script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('[data-emp-field-edit]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var row = btn.closest('.emp-show__row--editable');
+            if (!row) return;
+            row.classList.add('is-editing');
+            var view = row.querySelector('.emp-show__view');
+            var form = row.querySelector('.emp-show__edit-form');
+            if (view) view.setAttribute('hidden', 'hidden');
+            if (form) form.removeAttribute('hidden');
+            btn.setAttribute('hidden', 'hidden');
+        });
+    });
+    document.querySelectorAll('[data-emp-field-cancel]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var row = btn.closest('.emp-show__row--editable');
+            if (!row) return;
+            row.classList.remove('is-editing');
+            var view = row.querySelector('.emp-show__view');
+            var form = row.querySelector('.emp-show__edit-form');
+            var editBtn = row.querySelector('[data-emp-field-edit]');
+            if (view) view.removeAttribute('hidden');
+            if (form) {
+                form.setAttribute('hidden', 'hidden');
+                if (typeof form.reset === 'function') form.reset();
+            }
+            if (editBtn) editBtn.removeAttribute('hidden');
+        });
+    });
+});
+</script>
+@if(old('_panel'))
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var p = @json(old('_panel'));
+    if (window.__empShowGo && p) {
+        window.__empShowGo(p);
+    }
+});
+</script>
+@endif
 @if($errors->has('document_category') || $errors->has('document_file'))
 <script>
 document.addEventListener('DOMContentLoaded', function () {

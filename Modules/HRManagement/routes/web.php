@@ -38,6 +38,7 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::get('hr-management/employees', [HrEmployeeController::class, 'index'])->name('hr.employees.index');
     Route::post('hr-management/employees', [HrEmployeeController::class, 'store'])->name('hr.employees.store');
     Route::get('hr-management/employees/{employee}', [HrEmployeeController::class, 'show'])->name('hr.employees.show');
+    Route::patch('hr-management/employees/{employee}', [HrEmployeeController::class, 'update'])->name('hr.employees.update');
     Route::post('hr-management/employees/{employee}/profile-photo', [HrEmployeeController::class, 'storeProfilePhoto'])->name('hr.employees.profile-photo.store');
     Route::delete('hr-management/employees/{employee}/profile-photo', [HrEmployeeController::class, 'destroyProfilePhoto'])->name('hr.employees.profile-photo.destroy');
     Route::post('hr-management/employees/{employee}/documents', [HrEmployeeController::class, 'storeDocument'])->name('hr.employees.documents.store');
