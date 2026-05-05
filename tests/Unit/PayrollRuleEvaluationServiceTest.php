@@ -64,3 +64,34 @@ test('formula mode supports arithmetic variables', function () {
     expect($out['amount'])->toBe(10500.0);
     expect($out['errors'])->toBeArray()->toHaveCount(0);
 });
+
+test('formula mode evaluates flow_v1 conditional graph before legacy formula', function () {
+    $svc = new PayrollRuleEvaluationService;
+
+    $rule = new PayrollRule([
+        'calculation_mode' => PayrollRule::MODE_FORMULA,
+        'is_active' => true,
+        'config_json' => [
+            'formula' => '999',
+            'flow_v1' => [
+                'version' => 1,
+                'root' => 'out',
+                'nodes' => [
+                    'lhs' => ['type' => 'context', 'field' => 'basic_salary'],
+                    'rhs' => ['type' => 'constant', 'value' => 50000],
+                    'cmp' => ['type' => 'compare', 'op' => 'gt', 'left' => 'lhs', 'right' => 'rhs'],
+                    'hi' => ['type' => 'constant', 'value' => 2000],
+                    'lo' => ['type' => 'constant', 'value' => 1000],
+                    'out' => ['type' => 'cond', 'test' => 'cmp', 'then' => 'hi', 'else' => 'lo'],
+                ],
+            ],
+        ],
+    ]);
+
+    $high = $svc->evaluate($rule, ['basic_salary' => 60000]);
+    expect($high['amount'])->toBe(2000.0);
+    expect($high['errors'])->toHaveCount(0);
+
+    $low = $svc->evaluate($rule, ['basic_salary' => 40000]);
+    expect($low['amount'])->toBe(1000.0);
+});

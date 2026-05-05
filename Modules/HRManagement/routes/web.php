@@ -49,6 +49,7 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::post('hr-management/payroll/templates/apply', [HrPayrollController::class, 'applyTemplate'])->name('hr.payroll.templates.apply');
     Route::post('hr-management/payroll/rule-sets', [HrPayrollController::class, 'storeRuleSet'])->name('hr.payroll.rule-sets.store');
     Route::post('hr-management/payroll/rule-sets/{ruleSet}/rules', [HrPayrollController::class, 'storeRule'])->name('hr.payroll.rules.store');
+    Route::patch('hr-management/payroll/rules/{payrollRule}', [HrPayrollController::class, 'updateRule'])->name('hr.payroll.rules.update');
     Route::post('hr-management/payroll/cycles', [HrPayrollController::class, 'storeCycle'])->name('hr.payroll.cycles.store');
     Route::get('hr-management/payroll/cycles/{cycle}', [HrPayrollController::class, 'showCycle'])->name('hr.payroll.cycles.show');
     Route::post('hr-management/payroll/cycles/{cycle}/compute', [HrPayrollController::class, 'computeCycle'])->name('hr.payroll.cycles.compute');

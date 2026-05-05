@@ -174,6 +174,26 @@ class HrPayrollController extends Controller
         return redirect()->route('hr.payroll.rule-sets.index')->with('status', __('Payroll rule added.'));
     }
 
+    public function updateRule(Request $request, PayrollRule $payrollRule): RedirectResponse
+    {
+        $business = $this->resolveBusiness($request);
+        abort_if((int) $payrollRule->ruleSet?->business_id !== (int) $business->id, 404);
+
+        $validated = $request->validate([
+            'config_json' => ['required', 'string'],
+        ]);
+
+        $decoded = json_decode((string) $validated['config_json'], true);
+        if (! is_array($decoded)) {
+            return back()->withErrors(['config_json' => __('Config JSON must be valid JSON object/array.')])->withInput();
+        }
+
+        $payrollRule->config_json = $decoded;
+        $payrollRule->save();
+
+        return redirect()->route('hr.payroll.rule-sets.index')->with('status', __('Rule configuration updated.'));
+    }
+
     public function storeCycle(Request $request): RedirectResponse
     {
         $business = $this->resolveBusiness($request);

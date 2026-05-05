@@ -55,14 +55,30 @@ final class PayrollRuleEvaluationService
                 'slab_breakdown' => $slabMeta,
             ];
         } elseif ($mode === PayrollRule::MODE_FORMULA) {
-            $formula = trim((string) ($cfg['formula'] ?? ''));
-            if ($formula === '') {
-                $errors[] = 'Missing formula expression.';
+            $flowV1 = isset($cfg['flow_v1']) && is_array($cfg['flow_v1']) ? $cfg['flow_v1'] : null;
+            $flowRoot = is_array($flowV1) ? trim((string) ($flowV1['root'] ?? '')) : '';
+            $flowNodes = is_array($flowV1) && isset($flowV1['nodes']) && is_array($flowV1['nodes']) ? $flowV1['nodes'] : [];
+            $hasFlowGraph = $flowRoot !== '' && $flowNodes !== [];
+
+            if ($hasFlowGraph) {
+                $flowResult = $this->evaluateFormulaFlowGraph($flowV1, $context);
+                $amount = round($flowResult['value'], 2);
+                $errors = array_merge($errors, $flowResult['errors']);
+                $meta['flow_v1'] = true;
+                $formulaText = trim((string) ($cfg['formula'] ?? ''));
+                if ($formulaText !== '') {
+                    $meta['formula'] = $formulaText;
+                }
             } else {
-                $formulaResult = $this->evaluateFormula($formula, $context);
-                $amount = round($formulaResult['value'], 2);
-                $errors = array_merge($errors, $formulaResult['errors']);
-                $meta['formula'] = $formula;
+                $formula = trim((string) ($cfg['formula'] ?? ''));
+                if ($formula === '') {
+                    $errors[] = 'Missing formula expression.';
+                } else {
+                    $formulaResult = $this->evaluateFormula($formula, $context);
+                    $amount = round($formulaResult['value'], 2);
+                    $errors = array_merge($errors, $formulaResult['errors']);
+                    $meta['formula'] = $formula;
+                }
             }
         } else {
             $errors[] = 'Unsupported calculation mode: '.$mode;
@@ -131,6 +147,158 @@ final class PayrollRuleEvaluationService
         }
 
         return [round($total, 2), $breakdown];
+    }
+
+    /**
+     * Visual formula graph (flow_v1): context, constant, binary, compare, conditional.
+     *
+     * @param  array<string, mixed>  $flow
+     * @param  array<string, float|int|string|null>  $context
+     * @return array{value: float, errors: list<string>}
+     */
+    private function evaluateFormulaFlowGraph(array $flow, array $context): array
+    {
+        $nodes = $flow['nodes'] ?? [];
+        if (! is_array($nodes)) {
+            return ['value' => 0.0, 'errors' => ['Invalid formula flow definition.']];
+        }
+
+        $root = trim((string) ($flow['root'] ?? ''));
+        if ($root === '' || ! isset($nodes[$root]) || ! is_array($nodes[$root])) {
+            return ['value' => 0.0, 'errors' => ['Formula flow root is invalid.']];
+        }
+
+        $memo = [];
+        $path = [];
+
+        return $this->evaluateFlowGraphNode($root, $nodes, $context, $memo, $path, 0);
+    }
+
+    /**
+     * @param  array<string, mixed>  $nodes
+     * @param  array<string, true>  $path
+     * @return array{value: float, errors: list<string>}
+     */
+    private function evaluateFlowGraphNode(string $id, array $nodes, array $context, array &$memo, array &$path, int $depth): array
+    {
+        if ($depth > 128) {
+            return ['value' => 0.0, 'errors' => ['Formula flow graph is too deep.']];
+        }
+
+        if (isset($memo[$id])) {
+            return ['value' => $memo[$id], 'errors' => []];
+        }
+
+        if (isset($path[$id])) {
+            return ['value' => 0.0, 'errors' => ['Cycle detected in formula flow graph.']];
+        }
+
+        $path[$id] = true;
+        $node = $nodes[$id] ?? null;
+        if (! is_array($node)) {
+            unset($path[$id]);
+
+            return ['value' => 0.0, 'errors' => ['Missing flow node: '.$id]];
+        }
+
+        $type = (string) ($node['type'] ?? '');
+        $errors = [];
+        $value = 0.0;
+
+        if ($type === 'context') {
+            $field = (string) ($node['field'] ?? '');
+            $value = $field !== '' ? (float) ($context[$field] ?? 0) : 0.0;
+        } elseif ($type === 'constant') {
+            $value = (float) ($node['value'] ?? 0);
+        } elseif ($type === 'binary') {
+            $op = (string) ($node['op'] ?? '+');
+            if (! in_array($op, ['+', '-', '*', '/'], true)) {
+                $errors[] = 'Unsupported binary op in flow node '.$id.'.';
+            } else {
+                $leftId = trim((string) ($node['left'] ?? ''));
+                $rightId = trim((string) ($node['right'] ?? ''));
+                if ($leftId === '' || $rightId === '') {
+                    $errors[] = 'Binary node '.$id.' needs left and right inputs.';
+                } else {
+                    $l = $this->evaluateFlowGraphNode($leftId, $nodes, $context, $memo, $path, $depth + 1);
+                    $errors = array_merge($errors, $l['errors']);
+                    $r = $this->evaluateFlowGraphNode($rightId, $nodes, $context, $memo, $path, $depth + 1);
+                    $errors = array_merge($errors, $r['errors']);
+                    if ($errors !== []) {
+                        $value = 0.0;
+                    } elseif ($op === '/') {
+                        $rv = $r['value'];
+                        $value = abs($rv) < 0.0000001 ? 0.0 : $l['value'] / $rv;
+                    } else {
+                        $value = match ($op) {
+                            '+' => $l['value'] + $r['value'],
+                            '-' => $l['value'] - $r['value'],
+                            '*' => $l['value'] * $r['value'],
+                            default => 0.0,
+                        };
+                    }
+                }
+            }
+        } elseif ($type === 'compare') {
+            $cop = strtolower((string) ($node['op'] ?? ''));
+            if (! in_array($cop, ['gt', 'gte', 'lt', 'lte', 'eq'], true)) {
+                $errors[] = 'Unsupported compare op in flow node '.$id.'.';
+            } else {
+                $leftId = trim((string) ($node['left'] ?? ''));
+                $rightId = trim((string) ($node['right'] ?? ''));
+                if ($leftId === '' || $rightId === '') {
+                    $errors[] = 'Compare node '.$id.' needs left and right inputs.';
+                } else {
+                    $l = $this->evaluateFlowGraphNode($leftId, $nodes, $context, $memo, $path, $depth + 1);
+                    $errors = array_merge($errors, $l['errors']);
+                    $r = $this->evaluateFlowGraphNode($rightId, $nodes, $context, $memo, $path, $depth + 1);
+                    $errors = array_merge($errors, $r['errors']);
+                    if ($errors === []) {
+                        $lv = $l['value'];
+                        $rv = $r['value'];
+                        $ok = match ($cop) {
+                            'gt' => $lv > $rv,
+                            'gte' => $lv >= $rv,
+                            'lt' => $lv < $rv,
+                            'lte' => $lv <= $rv,
+                            'eq' => abs($lv - $rv) < 0.0000001,
+                            default => false,
+                        };
+                        $value = $ok ? 1.0 : 0.0;
+                    }
+                }
+            }
+        } elseif ($type === 'cond') {
+            $testId = trim((string) ($node['test'] ?? ''));
+            $thenId = trim((string) ($node['then'] ?? ''));
+            $elseId = trim((string) ($node['else'] ?? ''));
+            if ($testId === '' || $thenId === '' || $elseId === '') {
+                $errors[] = 'Condition node '.$id.' needs test, then, and else branches.';
+            } else {
+                $t = $this->evaluateFlowGraphNode($testId, $nodes, $context, $memo, $path, $depth + 1);
+                $errors = array_merge($errors, $t['errors']);
+                if ($errors !== []) {
+                    $value = 0.0;
+                } elseif (abs((float) $t['value']) >= 0.0000001) {
+                    $b = $this->evaluateFlowGraphNode($thenId, $nodes, $context, $memo, $path, $depth + 1);
+                    $errors = array_merge($errors, $b['errors']);
+                    $value = $b['value'];
+                } else {
+                    $b = $this->evaluateFlowGraphNode($elseId, $nodes, $context, $memo, $path, $depth + 1);
+                    $errors = array_merge($errors, $b['errors']);
+                    $value = $b['value'];
+                }
+            }
+        } else {
+            $errors[] = 'Unsupported flow node type '.$type.' at '.$id.'.';
+        }
+
+        unset($path[$id]);
+        if ($errors === []) {
+            $memo[$id] = $value;
+        }
+
+        return ['value' => $value, 'errors' => $errors];
     }
 
     /**
