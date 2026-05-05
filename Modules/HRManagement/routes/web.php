@@ -45,6 +45,7 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::get('hr-management/employees/{employee}/documents/{document}/download', [HrEmployeeController::class, 'downloadDocument'])->name('hr.employees.documents.download');
     Route::delete('hr-management/employees/{employee}/documents/{document}', [HrEmployeeController::class, 'destroyDocument'])->name('hr.employees.documents.destroy');
     Route::get('hr-management/payroll', [HrPayrollController::class, 'index'])->name('hr.payroll.index');
+    Route::get('hr-management/payroll/regional-template', [HrPayrollController::class, 'regionalTemplate'])->name('hr.payroll.regional-template');
     Route::get('hr-management/payroll/rule-sets', [HrPayrollController::class, 'ruleSets'])->name('hr.payroll.rule-sets.index');
     Route::post('hr-management/payroll/templates/apply', [HrPayrollController::class, 'applyTemplate'])->name('hr.payroll.templates.apply');
     Route::post('hr-management/payroll/rule-sets', [HrPayrollController::class, 'storeRuleSet'])->name('hr.payroll.rule-sets.store');

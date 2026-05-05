@@ -64,8 +64,6 @@
         .phi-card__title{margin:0;font-size:1rem;font-weight:800;letter-spacing:-.01em}
         .phi-card__sub{margin:5px 0 0;font-size:12px;line-height:1.45;color:var(--muted);max-width:720px}
 
-        .phi-template{display:grid;gap:12px;grid-template-columns:1fr auto;align-items:end}
-        @media (max-width:720px){.phi-template{grid-template-columns:1fr}}
         .phi-field label{display:block;font-size:10px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em}
         .phi-input{
             width:100%;max-width:420px;box-sizing:border-box;
@@ -166,6 +164,7 @@
                     </ul>
                 </div>
                 <div class="phi-actions-top">
+                    <a href="{{ route('hr.payroll.regional-template') }}" class="phi-btn phi-btn--muted"><i class="fa fa-globe" aria-hidden="true"></i>{{ __('Regional template') }}</a>
                     <a href="{{ route('hr.payroll.rule-sets.index') }}" class="phi-btn"><i class="fa fa-sliders" aria-hidden="true"></i>{{ __('Rule sets') }}</a>
                 </div>
             </div>
@@ -189,24 +188,6 @@
                 </article>
             </div>
         </header>
-
-        <section class="phi-card" aria-labelledby="phi-template-heading">
-            <h2 id="phi-template-heading" class="phi-card__title">{{ __('Regional template') }}</h2>
-            <p class="phi-card__sub">{{ __('Selecting a template applies statutory defaults (EPF, ETF, APIT) and payroll presets for new rule sets / cycles.') }}</p>
-            <form method="post" action="{{ route('hr.payroll.templates.apply') }}" class="phi-template" style="margin-top:12px;">
-                @csrf
-                <div class="phi-field">
-                    <label for="phi-template-select">{{ __('Template') }}</label>
-                    <select id="phi-template-select" name="template" class="phi-input" required>
-                        @foreach($payrollTemplates as $templateKey => $templateLabel)
-                            <option value="{{ $templateKey }}" @selected($selectedPayrollTemplate === $templateKey)>{{ $templateLabel }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <button type="submit" class="phi-btn"><i class="fa fa-gear" aria-hidden="true"></i>{{ __('Apply template') }}</button>
-                <p class="phi-hint">{{ __('Current selection is saved for this business and used when seeding payroll configuration.') }}</p>
-            </form>
-        </section>
 
         <section class="phi-card" aria-labelledby="phi-cycles-heading">
             <div class="phi-card__head">

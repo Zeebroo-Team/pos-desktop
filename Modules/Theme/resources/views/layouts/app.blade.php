@@ -119,6 +119,17 @@
         .menu-group-title{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:12px;font-weight:600;background:color-mix(in srgb,var(--primary) 8%,transparent)}
         .submenu{display:flex;flex-direction:column;gap:4px;margin-left:12px;padding-left:8px;border-left:1px dashed color-mix(in srgb,var(--primary) 35%,var(--border))}
         .submenu a{padding:7px 9px;font-size:12px}
+        /* Payroll hub: extra indent under main Payroll link */
+        .menu-payroll-nested{display:flex;flex-direction:column;gap:2px}
+        .menu-payroll-nested__sub{
+            display:flex;flex-direction:column;gap:1px;margin:2px 0 4px 4px;padding:4px 0 6px 12px;
+            border-left:1px dashed color-mix(in srgb,var(--primary) 28%,var(--border));
+        }
+        .menu-payroll-nested__sub a{
+            display:flex;align-items:center;gap:8px;padding:5px 8px 5px 6px;font-size:11.5px;border-radius:8px;text-decoration:none;color:inherit;
+        }
+        .menu-payroll-nested__sub a i{width:15px;text-align:center;font-size:11px;opacity:.88;color:var(--muted)}
+        .menu-payroll-nested__sub a:hover i,.menu-payroll-nested__sub a.active i{color:var(--primary)}
         .content{padding:0;margin-left:297px;min-height:100vh;border-left:1px solid var(--border)}
         .content--minimal{margin-left:0;border-left:none;max-width:none;width:100%}
         .navbar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 28px;border-bottom:1px solid var(--border);background:var(--card);position:sticky;top:0;z-index:20}
@@ -312,7 +323,14 @@
                 <div class="submenu">
                     <a href="{{ route('hr.index') }}" class="{{ request()->routeIs('hr.index') ? 'active' : '' }}"><i class="fa fa-table-list"></i><span>HR hub</span></a>
                     <a href="{{ route('hr.employees.index') }}" class="{{ request()->routeIs('hr.employees.*') ? 'active' : '' }}"><i class="fa fa-user-group"></i><span>Employees</span></a>
-                    <a href="{{ route('hr.payroll.index') }}" class="{{ request()->routeIs('hr.payroll.*') ? 'active' : '' }}"><i class="fa fa-money-check-dollar"></i><span>Payroll</span></a>
+                    <div class="menu-payroll-nested">
+                        <a href="{{ route('hr.payroll.index') }}" class="{{ request()->routeIs('hr.payroll.*') ? 'active' : '' }}"><i class="fa fa-money-check-dollar"></i><span>{{ __('Payroll') }}</span></a>
+                        <div class="menu-payroll-nested__sub" role="group" aria-label="{{ __('Payroll shortcuts') }}">
+                            <a href="{{ route('hr.payroll.regional-template') }}" class="{{ request()->routeIs('hr.payroll.regional-template') ? 'active' : '' }}"><i class="fa fa-globe" aria-hidden="true"></i><span>{{ __('Regional template') }}</span></a>
+                            <a href="{{ route('hr.payroll.rule-sets.index') }}" class="{{ request()->routeIs('hr.payroll.rule-sets.*') ? 'active' : '' }}"><i class="fa fa-sliders" aria-hidden="true"></i><span>{{ __('Rule sets') }}</span></a>
+                            <a href="{{ route('hr.payroll.index') }}#phi-cycles-heading" @class(['active' => request()->routeIs('hr.payroll.cycles.*') || request()->routeIs('hr.payroll.index')])><i class="fa fa-calendar-week" aria-hidden="true"></i><span>{{ __('Payroll cycles') }}</span></a>
+                        </div>
+                    </div>
                     <a href="{{ route('hr.departments.index') }}" class="{{ request()->routeIs('hr.departments.*') ? 'active' : '' }}"><i class="fa fa-folder-tree"></i><span>Departments</span></a>
                     <a href="{{ route('hr.job-titles.index') }}" class="{{ request()->routeIs('hr.job-titles.*') ? 'active' : '' }}"><i class="fa fa-id-badge"></i><span>Designations</span></a>
                 </div>

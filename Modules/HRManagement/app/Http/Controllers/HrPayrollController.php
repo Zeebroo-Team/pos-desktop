@@ -40,10 +40,16 @@ class HrPayrollController extends Controller
             'ruleSets' => $ruleSets,
             'cycles' => $cycles,
             'defaultRuleSetId' => optional($this->payrollComputation->resolveRuleSetForCycle($business))->id,
-            'payrollTemplates' => [
-                self::TEMPLATE_SL_STANDARD => __('Sri Lankan employee standard template'),
-            ],
-            'selectedPayrollTemplate' => (string) ($this->settings->get($business, 'hr.payroll.template', self::TEMPLATE_SL_STANDARD) ?: self::TEMPLATE_SL_STANDARD),
+        ]);
+    }
+
+    public function regionalTemplate(Request $request): RedirectResponse|View
+    {
+        $business = $this->resolveBusiness($request);
+
+        return view('hrmanagement::payroll.regional-template', [
+            'business' => $business,
+            ...$this->payrollTemplateViewData($business),
         ]);
     }
 
@@ -103,7 +109,7 @@ class HrPayrollController extends Controller
             'hr.payroll.statutory.apit.enabled' => true,
         ]);
 
-        return redirect()->route('hr.payroll.index')->with('status', __('Sri Lankan employee standard template applied. EPF, ETF, APIT, and payroll defaults are configured.'));
+        return redirect()->route('hr.payroll.regional-template')->with('status', __('Sri Lankan employee standard template applied. EPF, ETF, APIT, and payroll defaults are configured.'));
     }
 
     public function storeRuleSet(Request $request): RedirectResponse
@@ -365,6 +371,30 @@ class HrPayrollController extends Controller
         return response($html)
             ->header('Content-Type', 'text/html; charset=UTF-8')
             ->header('Content-Disposition', 'attachment; filename="'.$filename.'"');
+    }
+
+    /**
+     * @return array{payrollTemplateCards: list<array{key: string, title: string, description: string, highlights: list<string>}>, selectedPayrollTemplate: string}
+     */
+    private function payrollTemplateViewData(Business $business): array
+    {
+        $selected = (string) ($this->settings->get($business, 'hr.payroll.template', self::TEMPLATE_SL_STANDARD) ?: self::TEMPLATE_SL_STANDARD);
+
+        return [
+            'payrollTemplateCards' => [
+                [
+                    'key' => self::TEMPLATE_SL_STANDARD,
+                    'title' => __('Sri Lankan employee standard'),
+                    'description' => __('Regional defaults for Sri Lanka payroll: statutory components, tax slabs, and starter cycle presets. Applying replaces rules on the linked starter rule set.'),
+                    'highlights' => [
+                        __('EPF employee 8%, employer 12%; ETF employer 3%'),
+                        __('APIT slabs on taxable earnings'),
+                        __('Overtime rate reference + monthly cycle defaults'),
+                    ],
+                ],
+            ],
+            'selectedPayrollTemplate' => $selected,
+        ];
     }
 
     private function resolveBusiness(Request $request): Business
