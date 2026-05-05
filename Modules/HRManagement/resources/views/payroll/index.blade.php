@@ -34,7 +34,7 @@
         .payroll-table thead th{
             background:color-mix(in srgb,var(--card)94%,transparent);
             color:var(--muted);
-            font-size:10px;
+            font-size:12px !important;
             text-transform:uppercase;
             letter-spacing:.06em;
             font-weight:800;

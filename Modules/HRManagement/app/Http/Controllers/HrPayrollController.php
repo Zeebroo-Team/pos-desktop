@@ -51,6 +51,9 @@ class HrPayrollController extends Controller
     {
         $business = $this->resolveBusiness($request);
         $ruleSets = $this->loadRuleSets($business);
+        $ruleSets->load([
+            'rules' => fn ($query) => $query->orderBy('sort_order')->orderBy('id'),
+        ]);
 
         return view('hrmanagement::payroll.rule-sets', [
             'business' => $business,
