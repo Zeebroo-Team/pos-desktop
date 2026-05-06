@@ -19,6 +19,12 @@ class PayrollRule extends Model
 
     public const TYPE_OVERTIME = 'overtime';
 
+    /** Shown on payslip/working sheet only; excluded from payroll totals */
+    public const TYPE_INFORMATIONAL = 'informational';
+
+    /** Employer-only cost lines; excluded from employee net pay rollup */
+    public const TYPE_EMPLOYER_TRACKING = 'employer_tracking';
+
     public const MODE_FIXED = 'fixed';
 
     public const MODE_PERCENTAGE = 'percentage';

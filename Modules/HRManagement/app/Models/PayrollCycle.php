@@ -8,7 +8,9 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Modules\Business\Models\Business;
+use Modules\Transaction\Models\LedgerTransaction;
 
 class PayrollCycle extends Model
 {
@@ -64,6 +66,12 @@ class PayrollCycle extends Model
     public function finalizedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'finalized_by_user_id');
+    }
+
+    public function ledgerTransactions(): MorphMany
+    {
+        return $this->morphMany(LedgerTransaction::class, 'transactionable')
+            ->orderByDesc('occurrence_date');
     }
 
     public function isFinalized(): bool

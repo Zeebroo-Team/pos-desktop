@@ -9,11 +9,17 @@
         'draft' => __('Draft'),
         default => __(ucfirst((string) $cycle->status)),
     };
+    $sheetColumns = $sheetColumns ?? [];
+    $sheetColumnCount = count($sheetColumns);
+    $salarySheetTableMinWidth = max(720, $sheetColumnCount * 94);
 @endphp
 
 @section('content')
     <style>
-        .salary-sheet-page{max-width:1280px;margin:0 auto;display:grid;gap:14px}
+        .salary-sheet-page{
+            max-width:1280px;width:100%;min-width:0;margin:0 auto;display:grid;gap:14px;
+            box-sizing:border-box;
+        }
         .salary-sheet-hero{
             border:1px solid color-mix(in srgb,var(--border)90%,transparent);
             border-radius:14px;
@@ -65,20 +71,37 @@
             border-radius:14px;background:var(--card);
             padding:12px 14px;
             box-shadow:0 1px 0 color-mix(in srgb,var(--border)50%,transparent) inset;
+            min-width:0;
+            max-width:100%;
+            overflow:hidden;
         }
         .salary-sheet-table-card__caption{margin:0 0 10px;font-size:11px;font-weight:750;color:var(--muted)}
         .salary-sheet-table-card__caption strong{font-weight:800;color:var(--text)}
         .salary-sheet-scroll{
-            overflow:auto;
-            margin:0 -2px;border:1px solid color-mix(in srgb,var(--border)82%,transparent);
+            display:block;
+            width:100%;
+            max-width:100%;
+            min-width:0;
+            box-sizing:border-box;
+            overflow-x:auto;
+            overflow-y:auto;
+            overscroll-behavior:contain;
+            scrollbar-gutter:stable;
+            margin:0;border:1px solid color-mix(in srgb,var(--border)82%,transparent);
             border-radius:10px;background:color-mix(in srgb,var(--card)98%,transparent);
             -webkit-overflow-scrolling:touch;
-            max-height:min(70vh,920px);
+            max-height:min(72vh,min(920px,calc(100dvh - 280px)));
         }
         .salary-sheet-scroll::-webkit-scrollbar{height:10px;width:10px}
         .salary-sheet-scroll::-webkit-scrollbar-thumb{border-radius:8px;background:color-mix(in srgb,var(--border)65%,transparent)}
 
-        .salary-sheet__table{width:100%;min-width:1040px;border-collapse:separate;border-spacing:0}
+        .salary-sheet__table{
+            width:max-content;
+            max-width:none;
+            min-width:100%;
+            border-collapse:separate;
+            border-spacing:0;
+        }
         .salary-sheet__table thead th{
             position:sticky;top:0;z-index:3;
             background:color-mix(in srgb,var(--card)92%,transparent);
@@ -88,6 +111,7 @@
             white-space:nowrap;
             box-shadow:0 1px 0 color-mix(in srgb,var(--border)70%,transparent);
         }
+        .salary-sheet__table thead th.salary-sheet__num{text-align:right}
         .salary-sheet__table tbody td{
             padding:9px 9px;border-bottom:1px solid color-mix(in srgb,var(--border)70%,transparent);
             vertical-align:middle;font-size:12px;
@@ -123,7 +147,7 @@
         @media (max-width:640px){
             .salary-sheet-kpis{grid-template-columns:1fr}
             .salary-sheet-hero{padding:14px}
-            .salary-sheet-scroll{max-height:min(65vh,720px)}
+            .salary-sheet-scroll{max-height:min(58vh,min(720px,calc(100dvh - 240px)))}
         }
 
         @media print{
@@ -163,6 +187,7 @@
                     </ul>
                 </div>
                 <div class="salary-sheet-actions">
+                    <a href="{{ route('hr.payroll.cycles.salary-sheet.export', $cycle) }}" class="salary-sheet-btn"><i class="fa-solid fa-table" aria-hidden="true"></i>{{ __('Export Excel') }}</a>
                     <a href="{{ route('hr.payroll.cycles.show', $cycle) }}" class="salary-sheet-btn salary-sheet-btn--muted"><i class="fa fa-arrow-left" aria-hidden="true"></i>{{ __('Back to cycle') }}</a>
                     <a href="{{ route('hr.payroll.index') }}" class="salary-sheet-btn"><i class="fa fa-money-check-dollar" aria-hidden="true"></i>{{ __('Payroll home') }}</a>
                 </div>
@@ -194,20 +219,19 @@
         <section class="salary-sheet-table-card">
             <p class="salary-sheet-table-card__caption" id="salary-sheet-table-desc"><strong>{{ __('Detail') }}</strong> — {{ __('Scroll horizontally if needed; the employee column stays visible.') }}</p>
             <div class="salary-sheet-scroll" role="region" aria-labelledby="salary-sheet-table-desc" tabindex="0">
-                <table class="salary-sheet__table">
+                <table class="salary-sheet__table" style="min-width:{{ $salarySheetTableMinWidth }}px">
                     <thead>
                         <tr>
-                            <th scope="col" class="salary-sheet__th--employ">{{ __('Employee') }}</th>
-                            <th scope="col">{{ __('Basic') }}</th>
-                            <th scope="col">{{ __('OT') }}</th>
-                            <th scope="col">{{ __('Gross') }}</th>
-                            <th scope="col">{{ __('EPF Emp.') }}</th>
-                            <th scope="col">{{ __('EPF Emplr.') }}</th>
-                            <th scope="col">{{ __('ETF Emplr.') }}</th>
-                            <th scope="col">{{ __('APIT') }}</th>
-                            <th scope="col">{{ __('Deductions') }}</th>
-                            <th scope="col">{{ __('Net pay') }}</th>
-                            <th scope="col">{{ __('Status') }}</th>
+                            @foreach($sheetColumns as $col)
+                                @php $ck = (string) ($col['kind'] ?? ''); @endphp
+                                @if($ck === 'employee')
+                                    <th scope="col" class="salary-sheet__th--employ">{{ $col['label'] }}</th>
+                                @elseif($ck === 'status')
+                                    <th scope="col">{{ $col['label'] }}</th>
+                                @else
+                                    <th scope="col" class="salary-sheet__num">{{ $col['label'] }}</th>
+                                @endif
+                            @endforeach
                         </tr>
                     </thead>
                     <tbody>
@@ -215,26 +239,31 @@
                             @php
                                 $rowStatusRaw = strtolower((string) ($row['status'] ?? ''));
                                 $statusClass = str_contains($rowStatusRaw, 'final') ? 'salary-sheet__status--finalized' : 'salary-sheet__status--draft';
+                                $cellValues = $row['values'] ?? [];
                             @endphp
                             <tr>
-                                <td class="salary-sheet__cell--employ">
-                                    <span class="salary-sheet__name">{{ $row['employee_name'] }}</span>
-                                    <span class="salary-sheet__meta">{{ __('ID') }}: {{ $row['employee_id'] ?: '—' }}</span>
-                                </td>
-                                <td class="salary-sheet__num">{{ number_format((float) $row['basic_salary'], 2) }}</td>
-                                <td class="salary-sheet__num">{{ number_format((float) $row['overtime_amount'], 2) }}</td>
-                                <td class="salary-sheet__num">{{ number_format((float) $row['gross_earnings'], 2) }}</td>
-                                <td class="salary-sheet__num">{{ number_format((float) $row['epf_employee'], 2) }}</td>
-                                <td class="salary-sheet__num">{{ number_format((float) $row['epf_employer'], 2) }}</td>
-                                <td class="salary-sheet__num">{{ number_format((float) $row['etf_employer'], 2) }}</td>
-                                <td class="salary-sheet__num">{{ number_format((float) $row['apit'], 2) }}</td>
-                                <td class="salary-sheet__num">{{ number_format((float) $row['total_deductions'], 2) }}</td>
-                                <td class="salary-sheet__num salary-sheet__num--emph">{{ number_format((float) $row['net_pay'], 2) }}</td>
-                                <td class="salary-sheet__center"><span class="salary-sheet__status {{ $statusClass }}">{{ $row['status'] }}</span></td>
+                                @foreach($sheetColumns as $col)
+                                    @php $ck = (string) ($col['kind'] ?? ''); @endphp
+                                    @if($ck === 'employee')
+                                        <td class="salary-sheet__cell--employ">
+                                            <span class="salary-sheet__name">{{ $row['employee_name'] }}</span>
+                                            <span class="salary-sheet__meta">{{ __('ID') }}: {{ ($row['employee_id'] ?? '') ?: '—' }}</span>
+                                        </td>
+                                    @elseif($ck === 'status')
+                                        <td class="salary-sheet__center"><span class="salary-sheet__status {{ $statusClass }}">{{ $row['status'] }}</span></td>
+                                    @else
+                                        @php
+                                            $ckey = (string) ($col['key'] ?? '');
+                                            $amount = (float) ($cellValues[$ckey] ?? 0);
+                                            $emph = !empty($col['emphasize']);
+                                        @endphp
+                                        <td class="salary-sheet__num @if($emph) salary-sheet__num--emph @endif">{{ number_format($amount, 2) }}</td>
+                                    @endif
+                                @endforeach
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="11" class="salary-sheet-empty">
+                                <td colspan="{{ max(1, $sheetColumnCount) }}" class="salary-sheet-empty">
                                     <i class="fa fa-table" aria-hidden="true"></i>
                                     {{ __('No salary sheet rows found. Compute or finalize this cycle, then generate the sheet.') }}
                                 </td>

@@ -17,6 +17,7 @@ use Modules\HRManagement\Models\HrBusinessHoliday;
 use Modules\HRManagement\Models\HrComplaint;
 use Modules\HRManagement\Models\JobTitle;
 use Modules\HRManagement\Models\LeaveRequest;
+use Modules\HRManagement\Models\PayrollCustomTemplate;
 use Modules\HRManagement\Models\PayrollCycle;
 use Modules\HRManagement\Models\PayrollRuleSet;
 use Modules\Settings\Concerns\HasSettings;
@@ -140,6 +141,12 @@ class Business extends Model
     public function payrollRuleSets(): HasMany
     {
         return $this->hasMany(PayrollRuleSet::class)->orderByDesc('effective_from')->orderByDesc('id');
+    }
+
+    /** User-imported payroll preset definitions (JSON), scoped to this business. */
+    public function payrollCustomTemplates(): HasMany
+    {
+        return $this->hasMany(PayrollCustomTemplate::class);
     }
 
     public function payrollCycles(): HasMany

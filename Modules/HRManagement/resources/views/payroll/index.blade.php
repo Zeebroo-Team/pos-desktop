@@ -39,6 +39,7 @@
         .phi-btn--muted:hover{background:color-mix(in srgb,var(--primary)10%,transparent)}
         .phi-btn--ok{border-color:color-mix(in srgb,#22c55e 48%,var(--border));background:color-mix(in srgb,#22c55e 14%,transparent);color:#14532d}
         .phi-btn--ok:hover{background:color-mix(in srgb,#22c55e 22%,transparent)}
+        .phi-paid-tag{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#15803d;padding:3px 8px;border-radius:999px;border:1px solid color-mix(in srgb,#22c55e 45%,var(--border));background:color-mix(in srgb,#22c55e 10%,transparent)}
         .phi-btn--sm{padding:5px 9px;font-size:10.5px;border-radius:8px;gap:5px}
 
         .phi-kpis{display:grid;gap:11px;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:18px;padding-top:18px;border-top:1px solid color-mix(in srgb,var(--border)78%,transparent)}
@@ -116,8 +117,22 @@
         .phi-pill--ok{border-color:color-mix(in srgb,#22c55e 45%,var(--border));color:#15803d;background:color-mix(in srgb,#22c55e 10%,transparent)}
         .phi-pill--cmp{border-color:color-mix(in srgb,#6366f1 42%,var(--border));color:#4338ca;background:color-mix(in srgb,#6366f1 10%,transparent)}
 
-        .phi-act{display:flex;flex-wrap:wrap;gap:5px;align-items:center;max-width:340px}
+        .phi-act{display:flex;flex-wrap:wrap;gap:5px;align-items:center;max-width:420px}
         form.phi-inline-form{display:inline;margin:0;padding:0}
+        .phi-btn--danger{border-color:color-mix(in srgb,#b91c1c 45%,var(--border))!important;background:color-mix(in srgb,#b91c1c 8%,transparent)!important;color:#b91c1c!important}
+        .phi-btn--danger:hover{background:color-mix(in srgb,#b91c1c 16%,transparent)!important;color:#991b1b!important}
+
+        .phi-delete-dialog{border:none;border-radius:14px;padding:0;max-width:min(440px,94vw);background:var(--card);color:var(--text);
+            box-shadow:0 22px 55px rgba(0,0,0,.2),0 0 0 1px color-mix(in srgb,var(--border)70%,transparent);}
+        .phi-delete-dialog::backdrop{background:rgba(15,23,42,.45)}
+        .phi-delete-dialog__inner{padding:16px 18px 18px;display:grid;gap:12px}
+        .phi-delete-dialog__head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin:0}
+        .phi-delete-dialog__head h2{margin:0;font-size:1.02rem;font-weight:800;letter-spacing:-.02em;line-height:1.25;color:var(--text)}
+        .phi-delete-dialog__x{border:1px solid color-mix(in srgb,var(--border)80%,transparent);background:color-mix(in srgb,var(--card)96%,transparent);
+            border-radius:8px;width:32px;height:32px;font-size:18px;line-height:1;cursor:pointer;color:var(--muted)}
+        .phi-delete-dialog__x:hover{border-color:color-mix(in srgb,var(--primary)40%,var(--border));color:var(--text)}
+        .phi-delete-dialog__msg{margin:0;font-size:13px;line-height:1.45;color:var(--muted)}
+        .phi-delete-dialog__actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding-top:4px}
 
         .phi-empty{padding:32px 16px;text-align:center;font-size:13px;color:var(--muted);line-height:1.5}
         .phi-empty i.fa{display:block;margin:0 auto 10px;font-size:28px;opacity:.35}
@@ -197,40 +212,74 @@
                 </div>
             </div>
 
+            @php
+                $phiDefaultCycleName = get_settings('hr.payroll.cycle.default_name', __('Monthly Payroll'), $business);
+                $phiPreserveCycleInputs = $errors->any() || old('year') !== null;
+            @endphp
             <form method="post" action="{{ route('hr.payroll.cycles.store') }}" class="phi-grid">
                 @csrf
                 <div class="phi-field">
                     <label for="phi-rs">{{ __('Rule set') }}</label>
                     <select id="phi-rs" name="rule_set_id" class="phi-input" required style="max-width:none;">
                         @foreach($ruleSets as $set)
-                            <option value="{{ $set->id }}" @selected((int) $defaultRuleSetId === (int) $set->id)>{{ $set->name }}</option>
+                            <option value="{{ $set->id }}" @selected((int) old('rule_set_id', $defaultRuleSetId) === (int) $set->id)>{{ $set->name }}</option>
                         @endforeach
                     </select>
                 </div>
                 <div class="phi-field">
                     <label for="phi-cname">{{ __('Cycle name') }}</label>
-                    <input id="phi-cname" type="text" name="name" class="phi-input" value="{{ get_settings('hr.payroll.cycle.default_name', __('Monthly Payroll'), $business) }}" required style="max-width:none;">
+                    <input id="phi-cname" type="text" name="name" class="phi-input" value="{{ old('name', $phiDefaultCycleName) }}" required style="max-width:none;">
                 </div>
                 <div class="phi-field">
                     <label for="phi-year">{{ __('Year') }}</label>
-                    <input id="phi-year" type="number" name="year" class="phi-input" value="{{ now()->year }}" min="2020" max="2100" required style="max-width:none;">
+                    <input id="phi-year" type="number" name="year" class="phi-input" value="{{ old('year', now()->year) }}" min="2020" max="2100" required style="max-width:none;">
                 </div>
                 <div class="phi-field">
                     <label for="phi-month">{{ __('Month') }}</label>
-                    <input id="phi-month" type="number" name="month" class="phi-input" value="{{ now()->month }}" min="1" max="12" required style="max-width:none;">
+                    <input id="phi-month" type="number" name="month" class="phi-input" value="{{ old('month', now()->month) }}" min="1" max="12" required style="max-width:none;">
                 </div>
                 <div class="phi-field">
                     <label for="phi-ps">{{ __('Start') }}</label>
-                    <input id="phi-ps" type="date" name="period_start" class="phi-input" value="{{ now()->startOfMonth()->toDateString() }}" required style="max-width:none;">
+                    <input id="phi-ps" type="date" name="period_start" class="phi-input" value="{{ old('period_start', now()->copy()->startOfMonth()->toDateString()) }}" required style="max-width:none;">
                 </div>
                 <div class="phi-field">
                     <label for="phi-pe">{{ __('End') }}</label>
-                    <input id="phi-pe" type="date" name="period_end" class="phi-input" value="{{ now()->endOfMonth()->toDateString() }}" required style="max-width:none;">
+                    <input id="phi-pe" type="date" name="period_end" class="phi-input" value="{{ old('period_end', now()->copy()->endOfMonth()->toDateString()) }}" required style="max-width:none;">
                 </div>
                 <div class="phi-form-actions">
                     <button type="submit" class="phi-btn"><i class="fa fa-calendar-plus" aria-hidden="true"></i>{{ __('Create payroll cycle') }}</button>
                 </div>
             </form>
+            <script>
+                (function () {
+                    var yEl = document.getElementById('phi-year');
+                    var mEl = document.getElementById('phi-month');
+                    var ps = document.getElementById('phi-ps');
+                    var pe = document.getElementById('phi-pe');
+                    var preserveFromServer = @json($phiPreserveCycleInputs);
+                    if (!yEl || !mEl || !ps || !pe) return;
+                    function pad2(n) { return n < 10 ? '0' + n : String(n); }
+                    function toYmd(d) {
+                        return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+                    }
+                    function syncPeriodFromMonthYear() {
+                        var y = parseInt(yEl.value, 10);
+                        var mo = parseInt(mEl.value, 10);
+                        if (!Number.isFinite(y) || !Number.isFinite(mo)) return;
+                        mo = Math.min(12, Math.max(1, mo));
+                        if (mEl.value !== String(mo)) mEl.value = mo;
+                        var start = new Date(y, mo - 1, 1);
+                        var end = new Date(y, mo, 0);
+                        ps.value = toYmd(start);
+                        pe.value = toYmd(end);
+                    }
+                    yEl.addEventListener('change', syncPeriodFromMonthYear);
+                    mEl.addEventListener('change', syncPeriodFromMonthYear);
+                    yEl.addEventListener('input', syncPeriodFromMonthYear);
+                    mEl.addEventListener('input', syncPeriodFromMonthYear);
+                    if (!preserveFromServer) syncPeriodFromMonthYear();
+                })();
+            </script>
 
             <p class="phi-hint" id="phi-table-hint" style="margin-top:4px;">{{ __('Use Open to manage items; generate and view salary sheet when totals are ready. Finalizing locks the cycle.') }}</p>
             <div class="phi-scroll" role="region" aria-labelledby="phi-cycles-heading" aria-describedby="phi-table-hint" tabindex="0">
@@ -273,9 +322,17 @@
                                         <a href="{{ route('hr.payroll.cycles.show', $cycle) }}" class="phi-btn phi-btn--sm">{{ __('Open') }}</a>
                                         <form method="post" action="{{ route('hr.payroll.cycles.salary-sheet.generate', $cycle) }}" class="phi-inline-form">@csrf<button type="submit" class="phi-btn phi-btn--sm phi-btn--muted">{{ __('Generate sheet') }}</button></form>
                                         <a href="{{ route('hr.payroll.cycles.salary-sheet', $cycle) }}" class="phi-btn phi-btn--sm">{{ __('Salary sheet') }}</a>
+                                        @if($cycle->isFinalized() && (int) ($cycle->ledger_transactions_count ?? 0) === 0 && (float) ($cycle->items_sum_net_pay ?? 0) > 0)
+                                            <a href="{{ route('hr.payroll.cycles.show', $cycle) }}#payroll-payment" class="phi-btn phi-btn--sm phi-btn--ok">{{ __('Make payment') }}</a>
+                                        @elseif($cycle->isFinalized() && (int) ($cycle->ledger_transactions_count ?? 0) > 0)
+                                            <span class="phi-paid-tag">{{ __('Paid') }}</span>
+                                        @endif
                                         @if(! $cycle->isFinalized())
                                             <form method="post" action="{{ route('hr.payroll.cycles.compute', $cycle) }}" class="phi-inline-form">@csrf<button type="submit" class="phi-btn phi-btn--sm">{{ __('Compute') }}</button></form>
                                             <form method="post" action="{{ route('hr.payroll.cycles.finalize', $cycle) }}" class="phi-inline-form" onsubmit="return confirm(@json(__('Finalize this cycle? This will lock updates.')))">@csrf<button type="submit" class="phi-btn phi-btn--sm phi-btn--ok">{{ __('Finalize') }}</button></form>
+                                        @endif
+                                        @if((int) ($cycle->ledger_transactions_count ?? 0) === 0)
+                                            <button type="button" class="phi-btn phi-btn--sm phi-btn--danger phi-js-open-delete-cycle" data-delete-url="{{ route('hr.payroll.cycles.destroy', $cycle) }}" aria-haspopup="dialog" aria-controls="phi-delete-cycle-dialog">{{ __('Delete') }}</button>
                                         @endif
                                     </div>
                                 </td>
@@ -291,6 +348,49 @@
                     </tbody>
                 </table>
             </div>
+
+            @if($cycles->isNotEmpty())
+                <dialog id="phi-delete-cycle-dialog" class="phi-delete-dialog" aria-labelledby="phi-delete-cycle-title">
+                    <div class="phi-delete-dialog__inner">
+                        <div class="phi-delete-dialog__head">
+                            <h2 id="phi-delete-cycle-title">{{ __('Delete this payroll cycle?') }}</h2>
+                            <button type="button" class="phi-delete-dialog__x" id="phi-delete-cycle-close" aria-label="{{ __('Close') }}">&times;</button>
+                        </div>
+                        <p class="phi-delete-dialog__msg">{{ __('Are you sure you want to delete this cycle? All employee rows and computations for this period will be removed. This cannot be undone.') }}</p>
+                        <div class="phi-delete-dialog__actions">
+                            <button type="button" class="phi-btn phi-btn--sm phi-btn--muted" id="phi-delete-cycle-cancel">{{ __('Cancel') }}</button>
+                            <form id="phi-delete-cycle-form" method="post" action="" class="phi-inline-form">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="phi-btn phi-btn--sm phi-btn--danger">{{ __('Yes, delete') }}</button>
+                            </form>
+                        </div>
+                    </div>
+                </dialog>
+                <script>
+                    (function () {
+                        var dlg = document.getElementById('phi-delete-cycle-dialog');
+                        var form = document.getElementById('phi-delete-cycle-form');
+                        if (!dlg || !form) return;
+                        function close() {
+                            if (dlg && typeof dlg.close === 'function') dlg.close();
+                        }
+                        document.querySelectorAll('.phi-js-open-delete-cycle').forEach(function (btn) {
+                            btn.addEventListener('click', function () {
+                                var u = btn.getAttribute('data-delete-url');
+                                if (u) form.setAttribute('action', u);
+                                if (typeof dlg.showModal === 'function') dlg.showModal();
+                            });
+                        });
+                        document.getElementById('phi-delete-cycle-cancel')?.addEventListener('click', close);
+                        document.getElementById('phi-delete-cycle-close')?.addEventListener('click', close);
+                        form.addEventListener('submit', function (e) {
+                            var a = form.getAttribute('action');
+                            if (!a) e.preventDefault();
+                        });
+                    })();
+                </script>
+            @endif
         </section>
     </div>
 @endsection

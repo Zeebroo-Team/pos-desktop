@@ -6,6 +6,8 @@ namespace Modules\HRManagement\Services;
 
 use Modules\Business\Models\Business;
 use Modules\HRManagement\Models\Employee;
+use Modules\HRManagement\Models\PayrollCycle;
+use Modules\HRManagement\Models\PayrollItem;
 
 /** Snapshot metrics for the HR hub dashboard. */
 final class HrHubSummaryService
@@ -25,6 +27,11 @@ final class HrHubSummaryService
             ->whereNotNull('salary')
             ->sum('salary') ?? 0);
 
+        $basicSum = (float) (Employee::query()
+            ->where('business_id', $business->id)
+            ->whereNotNull('basic_salary')
+            ->sum('basic_salary') ?? 0);
+
         $employeesWithSalary = Employee::query()
             ->where('business_id', $business->id)
             ->whereNotNull('salary')
@@ -41,6 +48,31 @@ final class HrHubSummaryService
         $casualLeaveDays = get_settings('hr.leave.casual_days', null, $business);
         $workdaysPerMonth = get_settings('hr.workdays_per_month', null, $business);
 
+        $latestCycle = PayrollCycle::query()
+            ->where('business_id', $business->id)
+            ->orderByDesc('year')
+            ->orderByDesc('month')
+            ->orderByDesc('id')
+            ->first();
+
+        $latestPayrollRun = null;
+        if ($latestCycle !== null) {
+            $agg = PayrollItem::query()
+                ->where('payroll_cycle_id', $latestCycle->id)
+                ->selectRaw('COALESCE(SUM(gross_earnings), 0) as sum_gross, COALESCE(SUM(net_pay), 0) as sum_net, COUNT(*) as n')
+                ->first();
+            $latestPayrollRun = [
+                'cycle_id' => $latestCycle->id,
+                'name' => $latestCycle->name,
+                'year' => $latestCycle->year,
+                'month' => $latestCycle->month,
+                'status' => $latestCycle->status,
+                'employee_rows' => $agg ? (int) $agg->n : 0,
+                'total_gross' => $agg ? round((float) $agg->sum_gross, 2) : 0.0,
+                'total_net' => $agg ? round((float) $agg->sum_net, 2) : 0.0,
+            ];
+        }
+
         return [
             'currency' => $currency,
             'department_count' => $departmentCount,
@@ -48,8 +80,10 @@ final class HrHubSummaryService
             'designation_count' => $designationCount,
             'holiday_count' => $holidayCount,
             'monthly_salary_total' => $salarySum,
+            'monthly_basic_total' => $basicSum,
             'employees_with_salary' => $employeesWithSalary,
             'employees_missing_salary' => $employeesMissingSalary,
+            'latest_payroll_run' => $latestPayrollRun,
             'annual_leave_days' => is_numeric($annualLeaveDays) ? (int) $annualLeaveDays : null,
             'casual_leave_days' => is_numeric($casualLeaveDays) ? (int) $casualLeaveDays : null,
             'workdays_per_month' => is_numeric($workdaysPerMonth) ? (int) $workdaysPerMonth : null,

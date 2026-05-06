@@ -48,14 +48,18 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::get('hr-management/payroll/regional-template', [HrPayrollController::class, 'regionalTemplate'])->name('hr.payroll.regional-template');
     Route::get('hr-management/payroll/rule-sets', [HrPayrollController::class, 'ruleSets'])->name('hr.payroll.rule-sets.index');
     Route::post('hr-management/payroll/templates/apply', [HrPayrollController::class, 'applyTemplate'])->name('hr.payroll.templates.apply');
+    Route::post('hr-management/payroll/templates/import', [HrPayrollController::class, 'importPayrollTemplate'])->name('hr.payroll.templates.import');
     Route::post('hr-management/payroll/rule-sets', [HrPayrollController::class, 'storeRuleSet'])->name('hr.payroll.rule-sets.store');
     Route::post('hr-management/payroll/rule-sets/{ruleSet}/rules', [HrPayrollController::class, 'storeRule'])->name('hr.payroll.rules.store');
     Route::patch('hr-management/payroll/rules/{payrollRule}', [HrPayrollController::class, 'updateRule'])->name('hr.payroll.rules.update');
     Route::post('hr-management/payroll/cycles', [HrPayrollController::class, 'storeCycle'])->name('hr.payroll.cycles.store');
+    Route::delete('hr-management/payroll/cycles/{cycle}', [HrPayrollController::class, 'destroyCycle'])->name('hr.payroll.cycles.destroy');
     Route::get('hr-management/payroll/cycles/{cycle}', [HrPayrollController::class, 'showCycle'])->name('hr.payroll.cycles.show');
     Route::post('hr-management/payroll/cycles/{cycle}/compute', [HrPayrollController::class, 'computeCycle'])->name('hr.payroll.cycles.compute');
     Route::post('hr-management/payroll/cycles/{cycle}/salary-sheet/generate', [HrPayrollController::class, 'generateSalarySheet'])->name('hr.payroll.cycles.salary-sheet.generate');
     Route::get('hr-management/payroll/cycles/{cycle}/salary-sheet', [HrPayrollController::class, 'showSalarySheet'])->name('hr.payroll.cycles.salary-sheet');
+    Route::post('hr-management/payroll/cycles/{cycle}/payment', [HrPayrollController::class, 'recordPayrollPayment'])->name('hr.payroll.cycles.payment.store');
+    Route::get('hr-management/payroll/cycles/{cycle}/salary-sheet/export', [HrPayrollController::class, 'exportSalarySheetExcel'])->name('hr.payroll.cycles.salary-sheet.export');
     Route::post('hr-management/payroll/cycles/{cycle}/items/{item}/recompute', [HrPayrollController::class, 'recomputeEmployee'])->name('hr.payroll.cycles.items.recompute');
     Route::get('hr-management/payroll/cycles/{cycle}/items/{item}/payslip', [HrPayrollController::class, 'showPayslip'])->name('hr.payroll.cycles.items.payslip');
     Route::get('hr-management/payroll/cycles/{cycle}/items/{item}/payslip/download', [HrPayrollController::class, 'downloadPayslip'])->name('hr.payroll.cycles.items.payslip.download');

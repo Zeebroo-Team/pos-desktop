@@ -42,6 +42,12 @@
         .rt-highlights li:last-child{margin-bottom:0}
         .rt-card-foot{margin-top:auto;padding-top:4px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
         .rt-hint{margin:0;font-size:10.5px;line-height:1.4;color:var(--muted)}
+
+        .rt-import{border:1px dashed color-mix(in srgb,var(--border)78%,transparent);border-radius:12px;background:color-mix(in srgb,var(--card)99%,transparent);padding:12px 14px}
+        .rt-import summary{cursor:pointer;font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;list-style:none}
+        .rt-import summary::-webkit-details-marker{display:none}
+        .rt-import textarea{width:100%;box-sizing:border-box;min-height:220px;font-family:ui-monospace,Consolas,Menlo,monospace;font-size:11px;line-height:1.35;padding:10px;border-radius:10px;border:1px solid color-mix(in srgb,var(--border)82%,transparent);background:color-mix(in srgb,var(--card)96%,transparent);color:var(--text)}
+        .rt-import code{font-size:10px;color:var(--muted)}
     </style>
 
     @if(session('status'))
@@ -72,10 +78,11 @@
             @foreach($payrollTemplateCards as $card)
                 @php
                     $isActive = $selectedPayrollTemplate === $card['key'];
+                    $cardDomId = 'rt-card-title-'.str_replace([':', ' ', '.'], '-', $card['key']);
                 @endphp
-                <article class="rt-card{{ $isActive ? ' rt-card--active' : '' }}" aria-labelledby="rt-card-title-{{ $card['key'] }}">
+                <article class="rt-card{{ $isActive ? ' rt-card--active' : '' }}" aria-labelledby="{{ $cardDomId }}">
                     <div class="rt-card-top">
-                        <h3 id="rt-card-title-{{ $card['key'] }}" class="rt-card-title">{{ $card['title'] }}</h3>
+                        <h3 id="{{ $cardDomId }}" class="rt-card-title">{{ $card['title'] }}@if(!empty($card['is_custom'])) <span class="rt-hint" style="display:inline;font-weight:700;">{{ __('(imported)') }}</span>@endif</h3>
                         @if($isActive)
                             <span class="rt-chip">{{ __('Installed') }}</span>
                         @endif
@@ -99,5 +106,19 @@
                 </article>
             @endforeach
         </div>
+
+        <details class="rt-import">
+            <summary>{{ __('Import custom template (JSON)') }}</summary>
+            <p class="rt-meta" style="margin:10px 0 8px;">{{ __('Paste a JSON object. It is saved for this business and applied immediately to the named rule set (rules are replaced). Keys: title, optional description & highlights, rule_set_name, optional currency, optional settings (flat scalars only), and rules (see payroll rules in Rule sets).') }}</p>
+            <p class="rt-hint" style="margin:0 0 8px;"><code>{"title":"…","rule_set_name":"…","currency":"INR","rules":[{"code":"STAT_1","name":"…","component_type":"statutory","calculation_mode":"percentage","sort_order":10,"is_taxable":false,"is_statutory":true,"is_active":true,"config_json":{"base_field":"basic_salary","percent":5}}],"settings":{"hr.payroll.cycle.default_working_days":26}}</code></p>
+            <form method="post" action="{{ route('hr.payroll.templates.import') }}" style="display:grid;gap:10px;margin-top:10px;">
+                @csrf
+                <label for="rt-import-json" class="rt-hint">{{ __('Template JSON') }}</label>
+                <textarea id="rt-import-json" name="definition" required placeholder="{{ __('{ ... }') }}" spellcheck="false">{{ old('definition') }}</textarea>
+                <div>
+                    <button type="submit" class="rt-btn rt-btn--ghost"><i class="fa fa-file-import" aria-hidden="true"></i>{{ __('Import & apply') }}</button>
+                </div>
+            </form>
+        </details>
     </div>
 @endsection

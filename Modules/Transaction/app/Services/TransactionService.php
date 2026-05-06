@@ -9,6 +9,7 @@ use Modules\Account\Models\Bill;
 use Modules\Account\Models\Loan;
 use Modules\Account\Models\Rental;
 use Modules\Business\Models\Business;
+use Modules\HRManagement\Models\PayrollCycle;
 use Modules\Transaction\Models\LedgerTransaction;
 
 class TransactionService
@@ -28,6 +29,7 @@ class TransactionService
                         Loan::class => ['bank'],
                         Rental::class => ['warehouse'],
                         Bill::class => ['warehouse'],
+                        PayrollCycle::class => ['ruleSet'],
                     ]);
                 },
                 'deductAccount.bankType',

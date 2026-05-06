@@ -10,6 +10,7 @@ use Modules\Account\Models\Bill;
 use Modules\Account\Models\Loan;
 use Modules\Account\Models\Rental;
 use Modules\Business\Models\Business;
+use Modules\HRManagement\Models\PayrollCycle;
 
 class LedgerTransaction extends Model
 {
@@ -68,6 +69,9 @@ class LedgerTransaction extends Model
         if ($subject instanceof Bill) {
             return 'Bill';
         }
+        if ($subject instanceof PayrollCycle) {
+            return 'Payroll';
+        }
 
         return $this->transactionable_type
             ? class_basename($this->transactionable_type)
@@ -94,6 +98,12 @@ class LedgerTransaction extends Model
             $name = trim((string) $subject->name);
 
             return $name !== '' ? $name : ('Bill #'.$subject->getKey());
+        }
+        if ($subject instanceof PayrollCycle) {
+            $name = trim((string) $subject->name);
+            $period = $subject->year.'-'.str_pad((string) $subject->month, 2, '0', STR_PAD_LEFT);
+
+            return $name !== '' ? $name.' · '.$period : ('Payroll #'.$subject->getKey());
         }
 
         if ($subject !== null) {

@@ -5,23 +5,37 @@ namespace Modules\HRManagement\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Modules\Account\Models\Account;
 use Modules\Business\Models\Business;
+use Modules\HRManagement\Models\PayrollCustomTemplate;
 use Modules\HRManagement\Models\PayrollCycle;
 use Modules\HRManagement\Models\PayrollItem;
 use Modules\HRManagement\Models\PayrollRule;
 use Modules\HRManagement\Models\PayrollRuleSet;
+use Modules\HRManagement\Payroll\RegionalTemplates\PayrollRegionalTemplateRegistry;
+use Modules\HRManagement\Payroll\RegionalTemplates\SriLankanEmployeeStandardPayrollTemplate;
 use Modules\HRManagement\Services\HrPayrollSettingsService;
 use Modules\HRManagement\Services\PayrollComputationService;
+use Modules\HRManagement\Services\PayrollCustomTemplateService;
+use Modules\HRManagement\Services\PayrollCyclePaymentService;
+use Modules\HRManagement\Services\PayrollSalarySheetExcelExportService;
+use Modules\HRManagement\Services\PayrollSalarySheetPresentationService;
 use Modules\Settings\Services\SettingsService;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class HrPayrollController extends Controller
 {
-    private const TEMPLATE_SL_STANDARD = 'sri_lankan_employee_standard';
-
     public function __construct(
         private readonly HrPayrollSettingsService $hrPayrollSettings,
         private readonly PayrollComputationService $payrollComputation,
+        private readonly PayrollRegionalTemplateRegistry $payrollRegionalTemplates,
+        private readonly PayrollCustomTemplateService $payrollCustomTemplates,
+        private readonly PayrollSalarySheetPresentationService $salarySheetPresentation,
+        private readonly PayrollSalarySheetExcelExportService $salarySheetExcelExport,
+        private readonly PayrollCyclePaymentService $payrollCyclePayment,
         private readonly SettingsService $settings,
     ) {}
 
@@ -32,7 +46,8 @@ class HrPayrollController extends Controller
 
         $cycles = $business->payrollCycles()
             ->with(['ruleSet', 'finalizedBy'])
-            ->withCount('items')
+            ->withCount(['items', 'ledgerTransactions'])
+            ->withSum('items', 'net_pay')
             ->get();
 
         return view('hrmanagement::payroll.index', [
@@ -70,46 +85,58 @@ class HrPayrollController extends Controller
     public function applyTemplate(Request $request): RedirectResponse
     {
         $business = $this->resolveBusiness($request);
-        $validated = $request->validate([
-            'template' => ['required', 'string'],
+        $request->validate([
+            'template' => ['required', 'string', Rule::in($this->allowedPayrollTemplateKeys($business))],
         ]);
-        $template = (string) $validated['template'];
+        $templateKey = (string) $request->input('template');
 
-        if ($template !== self::TEMPLATE_SL_STANDARD) {
+        if (PayrollCustomTemplate::matchesKey($templateKey)) {
+            $id = PayrollCustomTemplate::idFromKey($templateKey);
+            $custom = PayrollCustomTemplate::query()
+                ->where('business_id', $business->id)
+                ->whereKey($id)
+                ->first();
+            if ($custom === null) {
+                return back()->withErrors(['template' => __('Unknown custom payroll template.')]);
+            }
+
+            return redirect()
+                ->route('hr.payroll.regional-template')
+                ->with('status', $this->payrollCustomTemplates->apply($business, $custom));
+        }
+
+        $installer = $this->payrollRegionalTemplates->get($templateKey);
+        if ($installer === null) {
             return back()->withErrors(['template' => __('Unsupported payroll template.')]);
         }
 
-        $ruleSet = PayrollRuleSet::query()
-            ->where('business_id', $business->id)
-            ->where('name', 'Sri Lanka payroll starter')
-            ->first();
+        return redirect()
+            ->route('hr.payroll.regional-template')
+            ->with('status', $installer->install($business));
+    }
 
-        if (! $ruleSet) {
-            $ruleSet = $this->createStarterRuleSet($business);
-        }
-
-        $ruleSet->forceFill([
-            'currency' => (string) (get_settings('business.currency', 'LKR', $business) ?: 'LKR'),
-            'effective_from' => now()->toDateString(),
-            'is_default' => true,
-            'is_active' => true,
-            'notes' => 'Template: Sri Lankan employee standard',
-        ])->save();
-
-        $ruleSet->rules()->delete();
-        $this->attachSriLankanStandardRules($ruleSet);
-
-        $this->settings->setMany($business, [
-            'hr.payroll.template' => self::TEMPLATE_SL_STANDARD,
-            'hr.payroll.cycle.default_name' => 'Monthly Payroll',
-            'hr.payroll.cycle.default_working_days' => 26,
-            'hr.payroll.statutory.epf.employee.percent' => 8,
-            'hr.payroll.statutory.epf.employer.percent' => 12,
-            'hr.payroll.statutory.etf.employer.percent' => 3,
-            'hr.payroll.statutory.apit.enabled' => true,
+    public function importPayrollTemplate(Request $request): RedirectResponse
+    {
+        $business = $this->resolveBusiness($request);
+        $request->validate([
+            'definition' => ['required', 'string', 'max:500000'],
         ]);
 
-        return redirect()->route('hr.payroll.regional-template')->with('status', __('Sri Lankan employee standard template applied. EPF, ETF, APIT, and payroll defaults are configured.'));
+        $decoded = json_decode((string) $request->input('definition'), true);
+        if (! is_array($decoded)) {
+            return back()->withErrors(['definition' => __('Paste valid JSON (object with title, rule_set_name, rules, …).')])->withInput();
+        }
+
+        try {
+            $validated = $this->payrollCustomTemplates->validateImportPayload($decoded);
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors())->withInput();
+        }
+
+        $template = $this->payrollCustomTemplates->store($business, $validated);
+        $message = $this->payrollCustomTemplates->apply($business, $template);
+
+        return redirect()->route('hr.payroll.regional-template')->with('status', $message);
     }
 
     public function storeRuleSet(Request $request): RedirectResponse
@@ -207,9 +234,21 @@ class HrPayrollController extends Controller
             'rule_set_id' => ['required', 'integer'],
             'name' => ['required', 'string', 'max:140'],
             'year' => ['required', 'integer', 'min:2020', 'max:2100'],
-            'month' => ['required', 'integer', 'min:1', 'max:12'],
+            'month' => [
+                'required',
+                'integer',
+                'min:1',
+                'max:12',
+                Rule::unique('hr_payroll_cycles', 'month')->where(
+                    fn ($query) => $query
+                        ->where('business_id', $business->id)
+                        ->where('year', (int) $request->input('year'))
+                ),
+            ],
             'period_start' => ['required', 'date'],
             'period_end' => ['required', 'date', 'after_or_equal:period_start'],
+        ], [
+            'month.unique' => __('A payroll cycle already exists for this business in that month and year. Open it from the list or choose a different period.'),
         ]);
 
         $ruleSet = PayrollRuleSet::query()
@@ -231,20 +270,82 @@ class HrPayrollController extends Controller
         return redirect()->route('hr.payroll.index')->with('status', __('Payroll cycle created.'));
     }
 
+    public function destroyCycle(Request $request, PayrollCycle $cycle): RedirectResponse
+    {
+        $business = $this->resolveBusiness($request);
+        abort_if((int) $cycle->business_id !== (int) $business->id, 404);
+
+        if ($cycle->ledgerTransactions()->exists()) {
+            return redirect()
+                ->route('hr.payroll.index')
+                ->with('warning', __('This cycle has a recorded bank payment. Remove or reverse the ledger entry before deleting the cycle.'));
+        }
+
+        $cycle->delete();
+
+        return redirect()->route('hr.payroll.index')->with('status', __('Payroll cycle deleted.'));
+    }
+
     public function showCycle(Request $request, PayrollCycle $cycle): RedirectResponse|View
     {
         $business = $this->resolveBusiness($request);
         abort_if((int) $cycle->business_id !== (int) $business->id, 404);
 
         $cycle->load(['ruleSet', 'items.employee', 'items.components.rule']);
+        $cycle->loadCount('ledgerTransactions');
 
         $summary = $this->buildCycleSummary($cycle);
+
+        $paymentAccounts = Account::query()
+            ->where('user_id', $request->user()->id)
+            ->where('business_id', $business->id)
+            ->with(['bank'])
+            ->orderBy('account_name')
+            ->get();
+
+        $payrollPayment = null;
+        if ($cycle->ledger_transactions_count > 0) {
+            $payrollPayment = $cycle->ledgerTransactions()->with('deductAccount.bank')->first();
+        }
 
         return view('hrmanagement::payroll.cycle', [
             'business' => $business,
             'cycle' => $cycle,
             'summary' => $summary,
+            'paymentAccounts' => $paymentAccounts,
+            'totalNetPay' => round((float) ($summary['total_net'] ?? 0), 2),
+            'payrollPaymentRecorded' => $cycle->ledger_transactions_count > 0,
+            'payrollPayment' => $payrollPayment,
         ]);
+    }
+
+    public function recordPayrollPayment(Request $request, PayrollCycle $cycle): RedirectResponse
+    {
+        $business = $this->resolveBusiness($request);
+        abort_if((int) $cycle->business_id !== (int) $business->id, 404);
+
+        $validated = $request->validate([
+            'deduct_account_id' => [
+                'required',
+                'integer',
+                Rule::exists('accounts', 'id')->where(fn ($q) => $q
+                    ->where('user_id', $request->user()->id)
+                    ->where('business_id', $business->id)),
+            ],
+        ]);
+
+        try {
+            $this->payrollCyclePayment->recordPayment(
+                $request->user(),
+                $business,
+                $cycle,
+                (int) $validated['deduct_account_id'],
+            );
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors())->withInput();
+        }
+
+        return back()->with('status', __('Payment recorded. Total net pay was deducted from the selected account.'));
     }
 
     public function generateSalarySheet(Request $request, PayrollCycle $cycle): RedirectResponse
@@ -269,16 +370,42 @@ class HrPayrollController extends Controller
         $business = $this->resolveBusiness($request);
         abort_if((int) $cycle->business_id !== (int) $business->id, 404);
 
-        $cycle->load(['ruleSet', 'items.employee', 'items.components']);
-        $sheetRows = $this->buildSalarySheetRows($cycle);
+        $cycle->load([
+            'ruleSet.rules' => fn ($query) => $query->orderBy('sort_order')->orderBy('id'),
+            'items.employee',
+            'items.components',
+        ]);
+        $sheet = $this->salarySheetPresentation->forCycle($cycle, $business);
         $summary = $this->buildCycleSummary($cycle);
 
         return view('hrmanagement::payroll.salary-sheet', [
             'business' => $business,
             'cycle' => $cycle,
-            'rows' => $sheetRows,
+            'sheetColumns' => $sheet['columns'],
+            'rows' => $sheet['rows'],
             'summary' => $summary,
         ]);
+    }
+
+    public function exportSalarySheetExcel(Request $request, PayrollCycle $cycle): StreamedResponse
+    {
+        $business = $this->resolveBusiness($request);
+        abort_if((int) $cycle->business_id !== (int) $business->id, 404);
+
+        $cycle->load([
+            'ruleSet.rules' => fn ($query) => $query->orderBy('sort_order')->orderBy('id'),
+            'items.employee',
+            'items.components',
+        ]);
+        $sheet = $this->salarySheetPresentation->forCycle($cycle, $business);
+        $currency = (string) ($cycle->ruleSet?->currency ?: ($business->currency ?? 'LKR'));
+
+        return $this->salarySheetExcelExport->streamResponse(
+            $cycle,
+            $sheet['columns'],
+            $sheet['rows'],
+            $currency,
+        );
     }
 
     public function computeCycle(Request $request, PayrollCycle $cycle): RedirectResponse
@@ -306,15 +433,24 @@ class HrPayrollController extends Controller
             return back()->withErrors(['cycle' => __('Finalized payroll cycle cannot be changed.')]);
         }
 
+        if (! $this->payrollComputation->employeeEligibleForPayrollCycle($cycle, $item->employee)) {
+            return back()->withErrors([
+                'employee' => __('This employee cannot be paid in this cycle: joining date is after the cycle period ends. Run Compute all to refresh payroll lines.'),
+            ]);
+        }
+
         $validated = $request->validate([
             'overtime_hours' => ['nullable', 'numeric', 'min:0', 'max:1000'],
             'overtime_rate' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
             'attendance_days' => ['nullable', 'numeric', 'min:0', 'max:31'],
             'working_days' => ['nullable', 'numeric', 'min:0', 'max:31'],
             'leave_without_pay_days' => ['nullable', 'numeric', 'min:0', 'max:31'],
+            'salary_advance' => ['nullable', 'numeric', 'min:0', 'max:99999999999.99'],
+            'stamp_duty' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
         ]);
 
-        $this->payrollComputation->computeEmployee($cycle, $item->employee, $validated);
+        $prev = is_array($item->inputs_json) ? $item->inputs_json : [];
+        $this->payrollComputation->computeEmployee($cycle, $item->employee, [...$prev, ...$validated]);
 
         return back()->with('status', __('Employee payroll recomputed.'));
     }
@@ -378,23 +514,48 @@ class HrPayrollController extends Controller
      */
     private function payrollTemplateViewData(Business $business): array
     {
-        $selected = (string) ($this->settings->get($business, 'hr.payroll.template', self::TEMPLATE_SL_STANDARD) ?: self::TEMPLATE_SL_STANDARD);
+        $keys = $this->allowedPayrollTemplateKeys($business);
+        $fallback = $keys[0] ?? SriLankanEmployeeStandardPayrollTemplate::KEY;
+        $selected = (string) ($this->settings->get($business, 'hr.payroll.template', $fallback) ?: $fallback);
 
         return [
-            'payrollTemplateCards' => [
-                [
-                    'key' => self::TEMPLATE_SL_STANDARD,
-                    'title' => __('Sri Lankan employee standard'),
-                    'description' => __('Regional defaults for Sri Lanka payroll: statutory components, tax slabs, and starter cycle presets. Applying replaces rules on the linked starter rule set.'),
-                    'highlights' => [
-                        __('EPF employee 8%, employer 12%; ETF employer 3%'),
-                        __('APIT slabs on taxable earnings'),
-                        __('Overtime rate reference + monthly cycle defaults'),
-                    ],
-                ],
-            ],
+            'payrollTemplateCards' => array_merge(
+                $this->payrollRegionalTemplates->cards(),
+                $this->customPayrollTemplateCards($business),
+            ),
             'selectedPayrollTemplate' => $selected,
         ];
+    }
+
+    /** @return list<string> */
+    private function allowedPayrollTemplateKeys(Business $business): array
+    {
+        $custom = $business->payrollCustomTemplates()
+            ->pluck('id')
+            ->map(static fn ($id): string => PayrollCustomTemplate::KEY_PREFIX.$id)
+            ->all();
+
+        return array_values(array_merge($this->payrollRegionalTemplates->registeredKeys(), $custom));
+    }
+
+    /**
+     * @return list<array{key: string, title: string, description: string, highlights: list<string>}>
+     */
+    private function customPayrollTemplateCards(Business $business): array
+    {
+        $out = [];
+        foreach ($business->payrollCustomTemplates()->reorder()->orderBy('id')->get() as $row) {
+            $highlights = is_array($row->highlights) ? array_values(array_map(static fn ($h) => (string) $h, $row->highlights)) : [];
+            $out[] = [
+                'key' => $row->templateKey(),
+                'title' => $row->title,
+                'description' => (string) ($row->description ?? ''),
+                'highlights' => $highlights !== [] ? $highlights : [__('Imported template for this business.')],
+                'is_custom' => true,
+            ];
+        }
+
+        return $out;
     }
 
     private function resolveBusiness(Request $request): Business
@@ -410,101 +571,11 @@ class HrPayrollController extends Controller
         return $business;
     }
 
-    private function createStarterRuleSet(Business $business): PayrollRuleSet
-    {
-        return PayrollRuleSet::query()->create([
-            'business_id' => $business->id,
-            'name' => 'Sri Lanka payroll starter',
-            'currency' => (string) (get_settings('business.currency', 'LKR', $business) ?: 'LKR'),
-            'effective_from' => now()->toDateString(),
-            'is_default' => true,
-            'is_active' => true,
-            'notes' => 'Editable starter template with EPF/ETF/APIT style components.',
-        ]);
-    }
-
-    private function attachSriLankanStandardRules(PayrollRuleSet $ruleSet): void
-    {
-        if ($ruleSet->rules()->exists()) {
-            return;
-        }
-
-        $ruleSet->rules()->createMany([
-            [
-                'code' => 'EPF_EMPLOYEE',
-                'name' => 'EPF employee contribution',
-                'component_type' => PayrollRule::TYPE_STATUTORY,
-                'calculation_mode' => PayrollRule::MODE_PERCENTAGE,
-                'sort_order' => 10,
-                'is_taxable' => false,
-                'is_statutory' => true,
-                'is_active' => true,
-                'config_json' => ['base_field' => 'basic_salary', 'percent' => 8],
-            ],
-            [
-                'code' => 'ETF_EMPLOYER',
-                'name' => 'ETF employer contribution (tracking)',
-                'component_type' => PayrollRule::TYPE_STATUTORY,
-                'calculation_mode' => PayrollRule::MODE_PERCENTAGE,
-                'sort_order' => 20,
-                'is_taxable' => false,
-                'is_statutory' => true,
-                'is_active' => true,
-                'config_json' => ['base_field' => 'basic_salary', 'percent' => 3],
-            ],
-            [
-                'code' => 'EPF_EMPLOYER',
-                'name' => 'EPF employer contribution (tracking)',
-                'component_type' => PayrollRule::TYPE_STATUTORY,
-                'calculation_mode' => PayrollRule::MODE_PERCENTAGE,
-                'sort_order' => 25,
-                'is_taxable' => false,
-                'is_statutory' => true,
-                'is_active' => true,
-                'config_json' => ['base_field' => 'basic_salary', 'percent' => 12],
-            ],
-            [
-                'code' => 'APIT',
-                'name' => 'APIT',
-                'component_type' => PayrollRule::TYPE_DEDUCTION,
-                'calculation_mode' => PayrollRule::MODE_SLAB,
-                'sort_order' => 30,
-                'is_taxable' => false,
-                'is_statutory' => true,
-                'is_active' => true,
-                'config_json' => [
-                    'input_field' => 'taxable_earnings',
-                    'slabs' => [
-                        ['from' => 0, 'to' => 100000, 'percent' => 0],
-                        ['from' => 100000, 'to' => 141667, 'percent' => 6],
-                        ['from' => 141667, 'to' => 183333, 'percent' => 12],
-                        ['from' => 183333, 'to' => 225000, 'percent' => 18],
-                        ['from' => 225000, 'to' => 266667, 'percent' => 24],
-                        ['from' => 266667, 'to' => 308333, 'percent' => 30],
-                        ['from' => 308333, 'to' => null, 'percent' => 36],
-                    ],
-                ],
-            ],
-            [
-                'code' => 'OT_RATE_FORMULA',
-                'name' => 'Overtime rate helper (reference)',
-                'component_type' => PayrollRule::TYPE_OVERTIME,
-                'calculation_mode' => PayrollRule::MODE_FORMULA,
-                'sort_order' => 40,
-                'is_taxable' => true,
-                'is_statutory' => false,
-                'is_active' => true,
-                'config_json' => ['formula' => '(basic_salary/26/8)*1.5'],
-            ],
-        ]);
-    }
-
     private function loadRuleSets(Business $business)
     {
         $ruleSets = $business->payrollRuleSets()->withCount('rules')->get();
         if ($ruleSets->isEmpty()) {
-            $seed = $this->createStarterRuleSet($business);
-            $this->attachSriLankanStandardRules($seed);
+            $this->payrollRegionalTemplates->seedEmptyBusinessDefaults($business);
             $ruleSets = $business->payrollRuleSets()->withCount('rules')->get();
         }
 
@@ -550,47 +621,5 @@ class HrPayrollController extends Controller
         }
 
         return $totals;
-    }
-
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    private function buildSalarySheetRows(PayrollCycle $cycle): array
-    {
-        return $cycle->items->map(function (PayrollItem $item): array {
-            $epfEmployee = 0.0;
-            $epfEmployer = 0.0;
-            $etfEmployer = 0.0;
-            $apit = 0.0;
-
-            foreach ($item->components as $component) {
-                $code = strtoupper((string) $component->code);
-                $amount = abs((float) $component->amount);
-                if ($code === 'EPF_EMPLOYEE') {
-                    $epfEmployee = round($epfEmployee + $amount, 2);
-                } elseif ($code === 'EPF_EMPLOYER') {
-                    $epfEmployer = round($epfEmployer + $amount, 2);
-                } elseif ($code === 'ETF_EMPLOYER') {
-                    $etfEmployer = round($etfEmployer + $amount, 2);
-                } elseif ($code === 'APIT') {
-                    $apit = round($apit + $amount, 2);
-                }
-            }
-
-            return [
-                'employee_id' => (string) ($item->employee?->employee_id ?? ''),
-                'employee_name' => (string) ($item->employee?->full_name ?? __('Unknown employee')),
-                'basic_salary' => round((float) $item->basic_salary, 2),
-                'overtime_amount' => round((float) $item->overtime_amount, 2),
-                'gross_earnings' => round((float) $item->gross_earnings, 2),
-                'total_deductions' => round((float) $item->total_deductions, 2),
-                'net_pay' => round((float) $item->net_pay, 2),
-                'epf_employee' => $epfEmployee,
-                'epf_employer' => $epfEmployer,
-                'etf_employer' => $etfEmployer,
-                'apit' => $apit,
-                'status' => ucfirst((string) $item->status),
-            ];
-        })->values()->all();
     }
 }

@@ -19,6 +19,43 @@
     .hr-hub-sum{grid-template-columns:repeat(3,minmax(0,1fr));}
 }
 
+.hr-hub-payroll-banner{
+    box-sizing:border-box;width:100%;margin:0 0 14px;padding:12px 14px 13px;border-radius:8px;
+    border:1px solid color-mix(in srgb,var(--border)90%,transparent);
+    border-left:3px solid color-mix(in srgb,#d97706 70%,var(--border));
+    background:color-mix(in srgb,#d97706 5%,color-mix(in srgb,var(--card)96%,transparent));
+}
+.hr-hub-payroll-banner__top{
+    display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 16px;margin-bottom:8px;
+}
+.hr-hub-payroll-banner__title{
+    margin:0;font-size:12px;font-weight:800;letter-spacing:.02em;color:var(--muted);text-transform:none;line-height:1.25;
+}
+.hr-hub-payroll-banner__amount{
+    margin:0;font-size:clamp(1.15rem,.5vw + 1rem,1.45rem);font-weight:800;letter-spacing:-.02em;
+    font-variant-numeric:tabular-nums;color:var(--text);line-height:1.1;
+}
+.hr-hub-payroll-banner__msg{
+    margin:0;font-size:12px;line-height:1.55;color:color-mix(in srgb,var(--muted)82%,var(--text));
+}
+.hr-hub-payroll-banner__msg .sep{margin:0 .35em;color:color-mix(in srgb,var(--muted)72%,transparent);}
+.hr-hub-payroll-banner__actions{
+    display:flex;flex-wrap:wrap;gap:8px 10px;margin-top:12px;
+}
+.hr-hub-payroll-banner__btn{
+    display:inline-flex;align-items:center;justify-content:center;
+    padding:9px 16px;font-size:12px;font-weight:700;font-family:inherit;line-height:1.2;
+    border-radius:9px;text-decoration:none;cursor:pointer;
+    border:1px solid color-mix(in srgb,var(--primary)40%,var(--border));
+    background:color-mix(in srgb,var(--primary)14%,transparent);color:var(--text);
+    transition:background .15s ease,border-color .15s ease,filter .15s ease;
+}
+.hr-hub-payroll-banner__btn:hover{
+    background:color-mix(in srgb,var(--primary)22%,transparent);
+    border-color:color-mix(in srgb,var(--primary)52%,var(--border));
+    text-decoration:none;filter:brightness(1.02);
+}
+
 .hr-hub-card{
     --hr-accent:var(--primary);
     box-sizing:border-box;border-radius:6px;min-height:0;
@@ -217,6 +254,44 @@
             <span class="muted"> · </span>{{ __('Work days, leave policy, holidays, deductions notes, head of HR, and more.') }}
         </p>
 
+        @php
+            $withSalBanner = (int) ($s['employees_with_salary'] ?? 0);
+            $missSalBanner = (int) ($s['employees_missing_salary'] ?? 0);
+            $basicTotBanner = (float) ($s['monthly_basic_total'] ?? 0);
+            $lprBanner = $s['latest_payroll_run'] ?? null;
+            $lprOk = is_array($lprBanner) && isset($lprBanner['cycle_id']) && (int) ($lprBanner['employee_rows'] ?? 0) > 0;
+        @endphp
+        <section class="hr-hub-payroll-banner" aria-labelledby="hr-hub-payroll-cost-heading">
+            <div class="hr-hub-payroll-banner__top">
+                <h3 id="hr-hub-payroll-cost-heading" class="hr-hub-payroll-banner__title">{{ __('Payroll · total monthly salary cost') }}</h3>
+                <p class="hr-hub-payroll-banner__amount">{{ $fmtMoney((float) ($s['monthly_salary_total'] ?? 0)) }}</p>
+            </div>
+            <p class="hr-hub-payroll-banner__msg">
+                {{ __('Sum of the gross salary field recorded for each employee.') }}
+                @if($basicTotBanner != 0.0)
+                    <span class="sep">·</span>{{ __('Basic on file') }} {{ $fmtMoney($basicTotBanner) }}
+                @endif
+                @if($withSalBanner === 0)
+                    <span class="sep">·</span>{{ __('No gross recorded yet.') }}
+                @else
+                    <span class="sep">·</span>{{ __(':count with gross', ['count' => number_format($withSalBanner)]) }}@if($missSalBanner > 0)<span class="sep">·</span>{{ __(':n missing', ['n' => number_format($missSalBanner)]) }}@endif
+                @endif
+                @if($lprOk)
+                    <span class="sep">·</span>{{ __('Latest run') }} {{ str_pad((string) ($lprBanner['month'] ?? 0), 2, '0', STR_PAD_LEFT) }}/{{ $lprBanner['year'] ?? '' }}
+                    — {{ __('gross') }} {{ $fmtMoney((float) ($lprBanner['total_gross'] ?? 0)) }}, {{ __('net') }} {{ $fmtMoney((float) ($lprBanner['total_net'] ?? 0)) }}
+                @endif
+            </p>
+            <div class="hr-hub-payroll-banner__actions" role="group" aria-label="{{ __('Payroll shortcuts') }}">
+                @if($lprOk && Route::has('hr.payroll.cycles.show'))
+                    <a href="{{ route('hr.payroll.cycles.show', ['cycle' => $lprBanner['cycle_id']]) }}" class="hr-hub-payroll-banner__btn">{{ __('Open cycle') }}</a>
+                @endif
+                <a href="{{ route('hr.employees.index') }}" class="hr-hub-payroll-banner__btn">{{ __('Review employees') }}</a>
+                @if(Route::has('hr.payroll.index'))
+                    <a href="{{ route('hr.payroll.index') }}" class="hr-hub-payroll-banner__btn">{{ __('Payroll hub') }}</a>
+                @endif
+            </div>
+        </section>
+
         <div class="hr-hub-layout">
         <div class="hr-hub-layout__main">
 
@@ -254,26 +329,6 @@
                         <p class="hr-hub-card__k">{{ __('Holidays') }}</p>
                         <p class="hr-hub-card__v">{{ number_format((int) ($s['holiday_count'] ?? 0)) }}</p>
                         <p class="hr-hub-card__sub"><a href="{{ route('settings.business', ['tab' => 'hr']) }}">{{ __('HR settings') }}</a></p>
-                    </div>
-                </div>
-            </article>
-            <article class="hr-hub-card" style="--hr-accent:#d97706;">
-                <div class="hr-hub-card__inner">
-                    <div class="hr-hub-card__body">
-                        <p class="hr-hub-card__k">{{ __('Monthly gross (on file)') }}</p>
-                        <p class="hr-hub-card__v hr-hub-card__v--money">{{ $fmtMoney((float) ($s['monthly_salary_total'] ?? 0)) }}</p>
-                        <p class="hr-hub-card__sub">
-                            @php
-                                $withSal = (int) ($s['employees_with_salary'] ?? 0);
-                                $missSal = (int) ($s['employees_missing_salary'] ?? 0);
-                            @endphp
-                            @if($withSal === 0)
-                                {{ __('No gross recorded yet.') }}
-                            @else
-                                {{ __(':count with gross', ['count' => number_format($withSal)]) }}@if($missSal > 0) · {{ __(':n missing', ['n' => number_format($missSal)]) }}@endif.
-                            @endif
-                            <a href="{{ route('hr.employees.index') }}" class="hr-hub-card__link-extra">{{ __('Review employees') }}</a>
-                        </p>
                     </div>
                 </div>
             </article>

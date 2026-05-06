@@ -135,6 +135,7 @@
                 if (d) d.classList.toggle('is-active', i + 1 === n);
             });
             updateRequiredForStep(n);
+            // If step 2 is shown without a confirmation yet (e.g. deep-link / odd state), align once.
             if (!is1 && email && emailC && !emailC.value) {
                 emailC.value = email.value;
             }
@@ -152,13 +153,28 @@
                 return;
             }
             pass.setCustomValidity('');
+            // Always match confirmation to the current email when leaving step 1 so a stale
+            // re-enter field cannot fail Laravel's `confirmed` rule after the user edits email and continues again.
+            if (emailC) {
+                emailC.value = email.value;
+            }
             setStep(2);
             if (nameEl) nameEl.focus();
         });
 
         document.getElementById('registerBackBtn').addEventListener('click', function () {
+            if (emailC) {
+                emailC.value = '';
+            }
             setStep(1);
             if (email) email.focus();
+        });
+
+        form.addEventListener('submit', function (e) {
+            if (String(stepField.value) === '1') {
+                e.preventDefault();
+                document.getElementById('registerNextBtn').click();
+            }
         });
 
         setStep(initialStep);

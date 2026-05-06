@@ -22,10 +22,19 @@ final class PayrollComponentBuilderService
         $components = [];
         $errors = [];
 
+        $buildMode = (string) ($context['payroll_build_mode'] ?? 'default');
+        $isProrated26Sheet = $buildMode === 'standard_26_epf_sheet';
+
         $basicSalary = round((float) ($context['basic_salary'] ?? 0), 2);
         $overtimeHours = round(max(0, (float) ($context['overtime_hours'] ?? 0)), 2);
         $overtimeRate = round(max(0, (float) ($context['overtime_rate'] ?? 0)), 2);
         $overtimeAmount = round($overtimeHours * $overtimeRate, 2);
+
+        $basicMeta = ['system' => true];
+        if ($isProrated26Sheet) {
+            $basicMeta['exclude_from_payroll_totals'] = true;
+            $basicMeta['worksheet_basic_reference'] = true;
+        }
 
         $components[] = [
             'code' => 'BASIC_SALARY',
@@ -35,7 +44,7 @@ final class PayrollComponentBuilderService
             'rate' => $basicSalary,
             'amount' => $basicSalary,
             'rule_id' => null,
-            'meta_json' => ['system' => true],
+            'meta_json' => $basicMeta,
         ];
 
         if ($overtimeAmount > 0) {
@@ -52,8 +61,13 @@ final class PayrollComponentBuilderService
         }
 
         $ctx = $context;
+
         $ctx['gross_earnings'] = $basicSalary + $overtimeAmount;
         $ctx['taxable_earnings'] = $basicSalary + $overtimeAmount;
+        if ($isProrated26Sheet) {
+            $ctx['gross_earnings'] = $overtimeAmount;
+            $ctx['taxable_earnings'] = $overtimeAmount;
+        }
         $ctx['total_deductions'] = 0;
 
         $rules = $ruleSet->rules()->where('is_active', true)->get();
@@ -75,13 +89,22 @@ final class PayrollComponentBuilderService
                 'meta_json' => $eval['meta'],
             ];
 
-            if ($rule->component_type === PayrollRule::TYPE_EARNING || $rule->component_type === PayrollRule::TYPE_OVERTIME) {
+            if (
+                $rule->component_type === PayrollRule::TYPE_INFORMATIONAL
+                || $rule->component_type === PayrollRule::TYPE_EMPLOYER_TRACKING
+            ) {
+                // Visual / employer cost tracking only — do not mutate payroll rollups.
+            } elseif ($rule->component_type === PayrollRule::TYPE_EARNING || $rule->component_type === PayrollRule::TYPE_OVERTIME) {
                 $ctx['gross_earnings'] = round((float) $ctx['gross_earnings'] + $amount, 2);
                 if ($rule->is_taxable) {
                     $ctx['taxable_earnings'] = round((float) $ctx['taxable_earnings'] + $amount, 2);
                 }
             } else {
                 $ctx['total_deductions'] = round((float) $ctx['total_deductions'] + abs($amount), 2);
+            }
+
+            if (strtoupper((string) $rule->code) === 'EPF_SALARY') {
+                $ctx['epf_salary'] = $amount;
             }
 
             foreach ($eval['errors'] as $e) {

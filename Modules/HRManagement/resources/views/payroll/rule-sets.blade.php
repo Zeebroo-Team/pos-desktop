@@ -691,6 +691,8 @@
                             <option value="deduction" @selected(old('component_type') === 'deduction')>{{ __('Deduction') }}</option>
                             <option value="statutory" @selected(old('component_type') === 'statutory')>{{ __('Statutory') }}</option>
                             <option value="overtime" @selected(old('component_type') === 'overtime')>{{ __('Overtime') }}</option>
+                            <option value="informational" @selected(old('component_type') === 'informational')>{{ __('Informational (display only)') }}</option>
+                            <option value="employer_tracking" @selected(old('component_type') === 'employer_tracking')>{{ __('Employer tracking / cost lines') }}</option>
                         </select>
                         <small class="payroll-rule-help">{{ __('Choose whether this is income, deduction, statutory, or overtime.') }}</small>
                     </div>
@@ -748,6 +750,17 @@
                     ['attendance_days', __('Attendance days (input)')],
                     ['working_days', __('Working days in period (input)')],
                     ['leave_without_pay_days', __('LWP days (input)')],
+                    ['standard_days', __('Payroll standard days (settings, e.g. 26)')],
+                    ['actual_days', __('Effective actual days (attendance, capped to standard)')],
+                    ['proration_ratio', __('actual ÷ standard (for allowance pro-rating)')],
+                    ['no_pay_amount', __('Unpaid basic fraction (reference)')],
+                    ['epf_salary', __('EPF salary base (pro-rated basic for the month)')],
+                    ['medical_allowance_monthly', __('Medical allowance monthly (from employee allowances)')],
+                    ['cola_allowance_monthly', __('COLA monthly (from employee allowances)')],
+                    ['attendance_allowance_monthly', __('Attendance allowance monthly')],
+                    ['performance_allowance_monthly', __('Performance allowance monthly')],
+                    ['salary_advance', __('Salary advance deduction (cycle input)')],
+                    ['stamp_duty', __('Stamp duty (cycle input)')],
                 ];
                 $payflowFormulaSnippets = [
                     ['( taxable_earnings * 0.05 )', __('Example: 5% of taxable')],

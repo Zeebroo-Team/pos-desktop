@@ -3,6 +3,13 @@
 namespace Modules\HRManagement\Providers;
 
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Contracts\Foundation\Application;
+use Modules\HRManagement\Payroll\RegionalTemplates\IndianPayrollRegionalTemplate;
+use Modules\HRManagement\Payroll\RegionalTemplates\LkTwentySixDayEpfWorksheetPayrollTemplate;
+use Modules\HRManagement\Payroll\RegionalTemplates\PayrollRegionalTemplateInstallHelper;
+use Modules\HRManagement\Payroll\RegionalTemplates\PayrollRegionalTemplateRegistry;
+use Modules\HRManagement\Payroll\RegionalTemplates\SriLankanEmployeeStandardPayrollTemplate;
+use Modules\Settings\Services\SettingsService;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 
 class HRManagementServiceProvider extends ModuleServiceProvider
@@ -43,4 +50,29 @@ class HRManagementServiceProvider extends ModuleServiceProvider
     // {
     //     $schedule->command('inspire')->hourly();
     // }
+
+    public function register(): void
+    {
+        parent::register();
+
+        $this->app->singleton(PayrollRegionalTemplateInstallHelper::class);
+
+        $this->app->singleton(PayrollRegionalTemplateRegistry::class, static function ($app): PayrollRegionalTemplateRegistry {
+            /** @var Application $app */
+            return new PayrollRegionalTemplateRegistry([
+                new SriLankanEmployeeStandardPayrollTemplate(
+                    $app->make(SettingsService::class),
+                    $app->make(PayrollRegionalTemplateInstallHelper::class),
+                ),
+                new IndianPayrollRegionalTemplate(
+                    $app->make(SettingsService::class),
+                    $app->make(PayrollRegionalTemplateInstallHelper::class),
+                ),
+                new LkTwentySixDayEpfWorksheetPayrollTemplate(
+                    $app->make(SettingsService::class),
+                    $app->make(PayrollRegionalTemplateInstallHelper::class),
+                ),
+            ]);
+        });
+    }
 }

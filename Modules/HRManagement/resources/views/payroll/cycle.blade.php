@@ -10,6 +10,10 @@
         default => ucfirst((string) $cycle->status),
     };
     $pclIsLocked = $cycle->isFinalized();
+    $paymentAccounts = $paymentAccounts ?? collect();
+    $totalNetPay = (float) ($totalNetPay ?? 0);
+    $payrollPaymentRecorded = (bool) ($payrollPaymentRecorded ?? false);
+    $payrollPayment = $payrollPayment ?? null;
 @endphp
 
 @section('content')
@@ -48,6 +52,8 @@
         .pcl-btn--muted:hover{background:color-mix(in srgb,var(--primary)10%,transparent)}
         .pcl-btn--ok{border-color:color-mix(in srgb,#22c55e 48%,var(--border));background:color-mix(in srgb,#22c55e 14%,transparent);color:#14532d}
         .pcl-btn--ok:hover{background:color-mix(in srgb,#22c55e 22%,transparent)}
+        .pcl-btn--danger{border-color:color-mix(in srgb,#b91c1c 48%,var(--border));background:color-mix(in srgb,#b91c1c 10%,transparent);color:#b91c1c}
+        .pcl-btn--danger:hover{background:color-mix(in srgb,#b91c1c 18%,transparent);color:#991b1b}
         form.pcl-inline-form{display:inline;margin:0;padding:0}
 
         .pcl-kpis{display:grid;gap:11px;grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -133,6 +139,23 @@
         .pcl-empty{padding:28px 16px;text-align:center;font-size:13px;color:var(--muted);line-height:1.5}
         .pcl-empty i.fa{display:block;margin:0 auto 10px;font-size:26px;opacity:.35}
 
+        .pcl-paid-note{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:999px;font-size:11px;font-weight:750;
+            border:1px solid color-mix(in srgb,#22c55e 45%,var(--border));background:color-mix(in srgb,#22c55e 10%,transparent);color:#15803d;}
+        .pcl-pay-dialog{border:none;border-radius:14px;padding:0;max-width:min(440px,94vw);background:var(--card);color:var(--text);
+            box-shadow:0 22px 55px rgba(0,0,0,.2),0 0 0 1px color-mix(in srgb,var(--border)70%,transparent);}
+        .pcl-pay-dialog::backdrop{background:rgba(15,23,42,.45)}
+        .pcl-pay-form{padding:16px 18px 18px;display:grid;gap:12px}
+        .pcl-pay-dialog__head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin:0 0 4px}
+        .pcl-pay-dialog__head h2{margin:0;font-size:1.02rem;font-weight:800;letter-spacing:-.02em;line-height:1.25}
+        .pcl-pay-dialog__x{border:1px solid color-mix(in srgb,var(--border)80%,transparent);background:color-mix(in srgb,var(--card)96%,transparent);
+            border-radius:8px;width:32px;height:32px;font-size:18px;line-height:1;cursor:pointer;color:var(--muted)}
+        .pcl-pay-dialog__x:hover{border-color:color-mix(in srgb,var(--primary)40%,var(--border));color:var(--text)}
+        .pcl-pay-form .muted{margin:0;font-size:12px;line-height:1.45;color:var(--muted)}
+        .pcl-pay-form label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+        .pcl-pay-actions{display:flex;flex-wrap:wrap;gap:8px;padding-top:4px}
+        .pcl-pay-warn{margin:0;font-size:12px;font-weight:650}
+        .pcl-pay-warn a{color:var(--primary);font-weight:750}
+
         @media (max-width:1100px){.pcl-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
         @media (max-width:720px){
             .pcl-kpis{grid-template-columns:1fr}
@@ -195,6 +218,30 @@
                         <div class="pcl-actions__grp">
                             <form method="post" action="{{ route('hr.payroll.cycles.compute', $cycle) }}" class="pcl-inline-form">@csrf<button type="submit" class="pcl-btn"><i class="fa fa-calculator" aria-hidden="true"></i>{{ __('Compute all') }}</button></form>
                             <form method="post" action="{{ route('hr.payroll.cycles.finalize', $cycle) }}" class="pcl-inline-form" onsubmit="return confirm(@json(__('Finalize this cycle? You will not be able to recompute afterward.')))">@csrf<button type="submit" class="pcl-btn pcl-btn--ok"><i class="fa fa-lock" aria-hidden="true"></i>{{ __('Finalize') }}</button></form>
+                        </div>
+                    @endif
+                    @if($pclIsLocked && ! $payrollPaymentRecorded && $totalNetPay > 0)
+                        <div class="pcl-actions__grp" id="payroll-payment">
+                            <button type="button" id="pcl-pay-open" class="pcl-btn pcl-btn--ok"><i class="fa fa-money-bill-transfer" aria-hidden="true"></i>{{ __('Make payment') }}</button>
+                        </div>
+                    @elseif($pclIsLocked && $payrollPaymentRecorded && $payrollPayment)
+                        <div class="pcl-actions__grp">
+                            <span class="pcl-paid-note">
+                                <i class="fa fa-circle-check" aria-hidden="true"></i>
+                                {{ __('Paid :amount :cur from :account on :date.', [
+                                    'amount' => number_format((float) $payrollPayment->amount, 2),
+                                    'cur' => $pclCurrency,
+                                    'account' => $payrollPayment->deductAccount?->account_name ?? __('Account'),
+                                    'date' => $payrollPayment->occurrence_date?->format('M j, Y') ?? '—',
+                                ]) }}
+                            </span>
+                        </div>
+                    @endif
+                    @if((int) ($cycle->ledger_transactions_count ?? 0) === 0)
+                        <div class="pcl-actions__grp">
+                            <button type="button" id="pcl-delete-open" class="pcl-btn pcl-btn--danger" aria-haspopup="dialog" aria-controls="pcl-delete-dialog">
+                                <i class="fa fa-trash-can" aria-hidden="true"></i>{{ __('Delete cycle') }}
+                            </button>
                         </div>
                     @endif
                 </div>
@@ -281,6 +328,9 @@
                                             @csrf
                                             <input type="number" step="0.01" min="0" name="overtime_hours" class="pcl-input" placeholder="{{ __('OT hours') }}" value="{{ $item->inputs_json['overtime_hours'] ?? '' }}">
                                             <input type="number" step="0.01" min="0" name="overtime_rate" class="pcl-input" placeholder="{{ __('OT rate') }}" value="{{ $item->inputs_json['overtime_rate'] ?? '' }}">
+                                            <input type="number" step="0.01" min="0" name="attendance_days" class="pcl-input" title="{{ __('Actual days worked (defaults to standard days if empty)') }}" placeholder="{{ __('Actual days') }}" value="{{ $item->inputs_json['attendance_days'] ?? '' }}">
+                                            <input type="number" step="0.01" min="0" name="salary_advance" class="pcl-input" placeholder="{{ __('Salary advance') }}" value="{{ $item->inputs_json['salary_advance'] ?? '' }}">
+                                            <input type="number" step="0.01" min="0" name="stamp_duty" class="pcl-input" placeholder="{{ __('Stamp duty') }}" value="{{ $item->inputs_json['stamp_duty'] ?? '' }}">
                                             <button type="submit" class="pcl-btn pcl-btn--sm">{{ __('Recompute') }}</button>
                                         </form>
                                     @else
@@ -300,5 +350,84 @@
                 </table>
             </div>
         </section>
+
+        @if((int) ($cycle->ledger_transactions_count ?? 0) === 0)
+            <dialog id="pcl-delete-dialog" class="pcl-pay-dialog" aria-labelledby="pcl-delete-dialog-title">
+                <div class="pcl-pay-form">
+                    <div class="pcl-pay-dialog__head">
+                        <h2 id="pcl-delete-dialog-title">{{ __('Delete this payroll cycle?') }}</h2>
+                        <button type="button" class="pcl-pay-dialog__x" id="pcl-delete-close" aria-label="{{ __('Close') }}">&times;</button>
+                    </div>
+                    <p class="muted">{{ __('Are you sure you want to delete this cycle? All employee rows and computations for this period will be removed. This cannot be undone.') }}</p>
+                    <div class="pcl-pay-actions">
+                        <form method="post" action="{{ route('hr.payroll.cycles.destroy', $cycle) }}" class="pcl-inline-form">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="pcl-btn pcl-btn--danger">{{ __('Yes, delete cycle') }}</button>
+                        </form>
+                        <button type="button" class="pcl-btn pcl-btn--muted" id="pcl-delete-cancel">{{ __('Cancel') }}</button>
+                    </div>
+                </div>
+            </dialog>
+            <script>
+                (function () {
+                    var d = document.getElementById('pcl-delete-dialog');
+                    var o = document.getElementById('pcl-delete-open');
+                    if (o && d && typeof d.showModal === 'function') {
+                        o.addEventListener('click', function () { d.showModal(); });
+                    }
+                    var close = function () { if (d && typeof d.close === 'function') d.close(); };
+                    document.getElementById('pcl-delete-close')?.addEventListener('click', close);
+                    document.getElementById('pcl-delete-cancel')?.addEventListener('click', close);
+                })();
+            </script>
+        @endif
+
+        @if($pclIsLocked && ! $payrollPaymentRecorded && $totalNetPay > 0)
+            <dialog id="pcl-pay-dialog" class="pcl-pay-dialog" aria-labelledby="pcl-pay-dialog-title">
+                <form method="post" action="{{ route('hr.payroll.cycles.payment.store', $cycle) }}" class="pcl-pay-form">
+                    @csrf
+                    <div class="pcl-pay-dialog__head">
+                        <h2 id="pcl-pay-dialog-title">{{ __('Record payroll payment') }}</h2>
+                        <button type="button" class="pcl-pay-dialog__x" id="pcl-pay-close" aria-label="{{ __('Close') }}">&times;</button>
+                    </div>
+                    <p class="muted">{{ __('Deduct total net pay (:amount :currency) from the account you use to fund salaries.', ['amount' => number_format($totalNetPay, 2), 'currency' => $pclCurrency]) }}</p>
+                    <div>
+                        <label for="pcl-pay-account">{{ __('Pay from account') }}</label>
+                        <select id="pcl-pay-account" name="deduct_account_id" class="pcl-input" required @disabled($paymentAccounts->isEmpty())>
+                            <option value="">{{ __('Select account') }}</option>
+                            @foreach($paymentAccounts as $acc)
+                                <option value="{{ $acc->id }}">{{ $acc->account_name }}@if($acc->bank) ({{ $acc->bank->name }})@endif — {{ __('Balance') }}: {{ number_format((float) $acc->current_balance, 2) }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    @if($errors->has('deduct_account_id'))
+                        <p class="pcl-pay-warn" role="alert" style="color:#b91c1c;">{{ $errors->first('deduct_account_id') }}</p>
+                    @endif
+                    @if($paymentAccounts->isEmpty())
+                        <p class="pcl-pay-warn"><a href="{{ route('account.index') }}">{{ __('Add a bank account under Accounts, then return here.') }}</a></p>
+                    @endif
+                    <div class="pcl-pay-actions">
+                        <button type="submit" class="pcl-btn pcl-btn--ok" @disabled($paymentAccounts->isEmpty())>{{ __('Confirm payment') }}</button>
+                        <button type="button" class="pcl-btn pcl-btn--muted" id="pcl-pay-cancel">{{ __('Cancel') }}</button>
+                    </div>
+                </form>
+            </dialog>
+            <script>
+                (function () {
+                    var d = document.getElementById('pcl-pay-dialog');
+                    var o = document.getElementById('pcl-pay-open');
+                    if (o && d && typeof d.showModal === 'function') {
+                        o.addEventListener('click', function () { d.showModal(); });
+                    }
+                    var close = function () { if (d && typeof d.close === 'function') d.close(); };
+                    document.getElementById('pcl-pay-close')?.addEventListener('click', close);
+                    document.getElementById('pcl-pay-cancel')?.addEventListener('click', close);
+                    @if($errors->has('deduct_account_id'))
+                    if (d && typeof d.showModal === 'function') { d.showModal(); }
+                    @endif
+                })();
+            </script>
+        @endif
     </div>
 @endsection

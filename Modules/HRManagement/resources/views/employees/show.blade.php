@@ -1094,7 +1094,7 @@
                             </thead>
                             <tbody>
                                 @foreach($employee->leaveRequests as $lr)
-                                    <tr>
+                                    <tr id="hr-leave-request-{{ $lr->id }}">
                                         <td>
                                             @php
                                                 $pill = match ($lr->status) {
