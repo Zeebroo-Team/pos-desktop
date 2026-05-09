@@ -117,6 +117,11 @@ class Employee extends Model
         return $this->hasMany(PayrollItem::class, 'employee_id')->orderByDesc('id');
     }
 
+    public function biometricMappings(): HasMany
+    {
+        return $this->hasMany(EmployeeBiometricMapping::class, 'employee_id')->orderByDesc('id');
+    }
+
     public function employmentTypeLabel(): string
     {
         return match ($this->employment_type) {

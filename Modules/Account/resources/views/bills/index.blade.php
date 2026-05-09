@@ -176,6 +176,15 @@
                             if ($bill->warehouse) {
                                 $listMetaParts[] = \Illuminate\Support\Str::limit((string) $bill->warehouse->name, 28);
                             }
+                            if ($bill->property) {
+                                $listMetaParts[] = 'Property: '.\Illuminate\Support\Str::limit((string) $bill->property->property_name, 22);
+                            }
+                            if ($bill->employee) {
+                                $listMetaParts[] = 'Emp: '.\Illuminate\Support\Str::limit((string) $bill->employee->full_name, 22);
+                            }
+                            if ($bill->modification) {
+                                $listMetaParts[] = 'Mod: '.\Illuminate\Support\Str::limit((string) $bill->modification->name, 22);
+                            }
                             if ($bill->rental_property_related && $bill->rental) {
                                 $listMetaParts[] = 'Rental: '.\Illuminate\Support\Str::limit((string) $bill->rental->property_type, 22);
                             }

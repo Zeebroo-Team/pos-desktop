@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\Account\Http\Controllers\AccountController;
 use Modules\Account\Http\Controllers\BillController;
 use Modules\Account\Http\Controllers\LoanController;
+use Modules\Account\Http\Controllers\PropertyController;
 use Modules\Account\Http\Controllers\RentalController;
 
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -22,6 +23,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('rentals/{rental}/edit', [RentalController::class, 'edit'])->name('account.rentals.edit');
     Route::patch('rentals/{rental}', [RentalController::class, 'update'])->name('account.rentals.update');
     Route::delete('rentals/{rental}', [RentalController::class, 'destroy'])->name('account.rentals.destroy');
+    Route::get('properties', [PropertyController::class, 'index'])->name('account.properties.index');
+    Route::post('properties', [PropertyController::class, 'store'])->name('account.properties.store');
+    Route::delete('properties/{property}', [PropertyController::class, 'destroy'])->name('account.properties.destroy');
 
     Route::get('bills', [BillController::class, 'index'])->name('account.bills.index');
     Route::post('bills', [BillController::class, 'store'])->name('account.bills.store');

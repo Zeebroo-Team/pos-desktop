@@ -56,6 +56,43 @@
     text-decoration:none;filter:brightness(1.02);
 }
 
+.hr-hub-payroll-overdue{
+    box-sizing:border-box;width:100%;margin:0 0 14px;padding:11px 14px 12px;border-radius:8px;
+    border:1px solid color-mix(in srgb,#dc2626 42%,var(--border));
+    border-left:4px solid #dc2626;
+    background:color-mix(in srgb,#ef4444 9%,color-mix(in srgb,var(--card)94%,transparent));
+}
+.hr-hub-payroll-overdue__row{
+    display:flex;flex-wrap:wrap;align-items:flex-start;gap:10px 14px;
+}
+.hr-hub-payroll-overdue__body{flex:1;min-width:0;}
+.hr-hub-payroll-overdue__title{
+    margin:0 0 4px;font-size:13px;font-weight:800;letter-spacing:.02em;line-height:1.25;color:#b91c1c;
+}
+:is(html[data-theme="dark"],html[data-theme*="dark"]) .hr-hub-payroll-overdue__title{color:#fca5a5;}
+.hr-hub-payroll-overdue__text{
+    margin:0;font-size:12px;line-height:1.5;color:color-mix(in srgb,var(--text)92%,#991b1b);
+}
+:is(html[data-theme="dark"],html[data-theme*="dark"]) .hr-hub-payroll-overdue__text{color:color-mix(in srgb,var(--text)88%,#fecaca);}
+.hr-hub-payroll-overdue__actions{margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;}
+.hr-hub-payroll-overdue__btn{
+    display:inline-flex;align-items:center;justify-content:center;
+    padding:8px 14px;font-size:12px;font-weight:700;font-family:inherit;line-height:1.2;
+    border-radius:8px;text-decoration:none;cursor:pointer;
+    border:1px solid color-mix(in srgb,#dc2626 45%,var(--border));
+    background:color-mix(in srgb,#dc2626 14%,transparent);color:var(--text);
+}
+.hr-hub-payroll-overdue__btn:hover{
+    background:color-mix(in srgb,#dc2626 22%,transparent);
+    filter:brightness(1.02);text-decoration:none;
+}
+
+@keyframes hr-hub-overdue-pulse-ring{
+    0%{box-shadow:0 0 0 0 color-mix(in srgb,#ef4444 38%,transparent);}
+    70%{box-shadow:0 0 0 7px transparent;}
+    100%{box-shadow:0 0 0 0 transparent;}
+}
+
 .hr-hub-card{
     --hr-accent:var(--primary);
     box-sizing:border-box;border-radius:6px;min-height:0;
@@ -236,6 +273,54 @@
     flex-shrink:0;display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 8px;
     font-size:11px;font-weight:800;color:#fff;border-radius:999px;background:#0d9488;box-sizing:border-box;
 }
+
+.hr-hub-aside__block--overdue-payroll{
+    border-color:color-mix(in srgb,#ef4444 42%,var(--border));
+    border-left:4px solid #dc2626;
+    background:color-mix(in srgb,#ef4444 8%,color-mix(in srgb,var(--card)96%,transparent));
+    animation:hr-hub-overdue-pulse-ring 2.2s ease-out infinite;
+}
+.hr-hub-aside__overdue-payroll-head{
+    display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px;
+}
+.hr-hub-aside__overdue-payroll-h{
+    margin:0;font-size:14px;font-weight:800;letter-spacing:-.02em;line-height:1.2;
+    color:#b91c1c;display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+}
+:is(html[data-theme="dark"],html[data-theme*="dark"]) .hr-hub-aside__overdue-payroll-h{color:#fca5a5;}
+.hr-hub-aside__overdue-live{
+    flex-shrink:0;display:inline-flex;align-items:center;gap:6px;
+    font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;
+    color:#b91c1c;padding:4px 8px;border-radius:999px;
+    border:1px solid color-mix(in srgb,#ef4444 40%,var(--border));
+    background:color-mix(in srgb,#fef2f2 70%,transparent);
+}
+:is(html[data-theme="dark"],html[data-theme*="dark"]) .hr-hub-aside__overdue-live{
+    color:#fecaca;background:color-mix(in srgb,#ef4444 12%,transparent);border-color:color-mix(in srgb,#ef4444 38%,var(--border));
+}
+.hr-hub-aside__overdue-live-dot{
+    width:7px;height:7px;border-radius:50%;background:#dc2626;
+    animation:hr-hub-overdue-blink 1.1s ease-in-out infinite;
+    box-shadow:0 0 0 0 color-mix(in srgb,#ef4444 55%,transparent);
+}
+@keyframes hr-hub-overdue-blink{
+    0%,100%{opacity:1;transform:scale(1);}
+    50%{opacity:.45;transform:scale(.92);}
+}
+.hr-hub-aside__overdue-payroll-p{
+    margin:0 0 10px;font-size:11px;line-height:1.45;color:color-mix(in srgb,var(--muted)70%,#991b1b);}
+:is(html[data-theme="dark"],html[data-theme*="dark"]) .hr-hub-aside__overdue-payroll-p{color:color-mix(in srgb,var(--muted)62%,#fecaca);}
+.hr-hub-aside__overdue-payroll-cta{
+    display:inline-flex;align-items:center;justify-content:center;width:100%;box-sizing:border-box;
+    padding:9px 12px;font-size:12px;font-weight:800;text-decoration:none;text-align:center;border-radius:9px;
+    border:1px solid color-mix(in srgb,#dc2626 42%,var(--border));
+    background:color-mix(in srgb,#dc2626 14%,transparent);color:var(--text);
+    transition:background .15s ease,border-color .15s ease;
+}
+.hr-hub-aside__overdue-payroll-cta:hover{
+    background:color-mix(in srgb,#dc2626 22%,transparent);
+    color:inherit;text-decoration:none;
+}
 </style>
 
     @if(session('status'))
@@ -260,7 +345,30 @@
             $basicTotBanner = (float) ($s['monthly_basic_total'] ?? 0);
             $lprBanner = $s['latest_payroll_run'] ?? null;
             $lprOk = is_array($lprBanner) && isset($lprBanner['cycle_id']) && (int) ($lprBanner['employee_rows'] ?? 0) > 0;
+            $pvo = $s['previous_month_payroll_overdue'] ?? [];
+            $prevMonthPayrollOverdue = is_array($pvo) && (($pvo['overdue'] ?? false) === true);
+            $pvoLabel = is_array($pvo) ? (string) ($pvo['month_label'] ?? '') : '';
         @endphp
+        @if($prevMonthPayrollOverdue && $pvoLabel !== '')
+            <div class="hr-hub-payroll-overdue" role="alert">
+                <div class="hr-hub-payroll-overdue__row">
+                    <div class="hr-hub-payroll-overdue__body">
+                        <p id="hr-hub-prev-month-payroll-alert" class="hr-hub-payroll-overdue__title">{{ __('Payroll overdue') }}</p>
+                        <p class="hr-hub-payroll-overdue__text" aria-describedby="hr-hub-prev-month-payroll-alert">
+                            {{ __('Payroll for :period is not finalized yet. Open Payroll and complete that cycle so records stay up to date.', ['period' => $pvoLabel]) }}
+                        </p>
+                        <div class="hr-hub-payroll-overdue__actions">
+                            @if(($pvo['cycle_id'] ?? null) !== null && Route::has('hr.payroll.cycles.show'))
+                                <a href="{{ route('hr.payroll.cycles.show', ['cycle' => $pvo['cycle_id']]) }}" class="hr-hub-payroll-overdue__btn">{{ __('Open cycle') }}</a>
+                            @endif
+                            @if(Route::has('hr.payroll.index'))
+                                <a href="{{ route('hr.payroll.index') }}" class="hr-hub-payroll-overdue__btn">{{ __('Payroll hub') }}</a>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
         <section class="hr-hub-payroll-banner" aria-labelledby="hr-hub-payroll-cost-heading">
             <div class="hr-hub-payroll-banner__top">
                 <h3 id="hr-hub-payroll-cost-heading" class="hr-hub-payroll-banner__title">{{ __('Payroll · total monthly salary cost') }}</h3>
@@ -438,6 +546,15 @@
                         <span class="hr-hub-shortcut__p">{{ __('Register and list staff for payroll.') }}</span>
                     </span>
                 </a>
+                @if(Route::has('hr.attendance.index'))
+                    <a class="hr-hub-shortcut" style="--sc-accent:#16a34a;" href="{{ route('hr.attendance.index') }}">
+                        <span class="hr-hub-shortcut__icon" aria-hidden="true"><i class="fa fa-calendar-check"></i></span>
+                        <span class="hr-hub-shortcut__body">
+                            <span class="hr-hub-shortcut__h">{{ __('Attendance') }}</span>
+                            <span class="hr-hub-shortcut__p">{{ __('Mark daily attendance and review monthly totals.') }}</span>
+                        </span>
+                    </a>
+                @endif
                 <a class="hr-hub-shortcut" style="--sc-accent:#b45309;" href="{{ route('hr.payroll.index') }}">
                     <span class="hr-hub-shortcut__icon" aria-hidden="true"><i class="fa fa-money-check-dollar"></i></span>
                     <span class="hr-hub-shortcut__body">

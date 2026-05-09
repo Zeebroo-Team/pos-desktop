@@ -11,6 +11,7 @@ use Modules\Account\Models\Bill;
 use Modules\Account\Models\Loan;
 use Modules\Account\Models\Rental;
 use Modules\HRManagement\Models\AllowanceType;
+use Modules\HRManagement\Models\AttendanceRecord;
 use Modules\HRManagement\Models\Department;
 use Modules\HRManagement\Models\Employee;
 use Modules\HRManagement\Models\HrBusinessHoliday;
@@ -124,6 +125,11 @@ class Business extends Model
     public function leaveRequests(): HasMany
     {
         return $this->hasMany(LeaveRequest::class)->orderByDesc('created_at');
+    }
+
+    public function attendanceRecords(): HasMany
+    {
+        return $this->hasMany(AttendanceRecord::class)->orderByDesc('work_date')->orderByDesc('id');
     }
 
     /** Grievances / HR issues logged against this business (internal inbox). */

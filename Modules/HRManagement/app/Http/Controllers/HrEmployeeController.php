@@ -21,6 +21,7 @@ use Modules\HRManagement\Models\Department;
 use Modules\HRManagement\Models\Employee;
 use Modules\HRManagement\Models\EmployeeDocument;
 use Modules\HRManagement\Models\JobTitle;
+use Modules\HRManagement\Models\PayrollItem;
 use Modules\HRManagement\Services\DepartmentService;
 use Modules\HRManagement\Services\EmployeeDocumentService;
 use Modules\HRManagement\Services\EmployeeLeaveBalanceService;
@@ -228,9 +229,18 @@ class HrEmployeeController extends Controller
 
         $employee->load(['bank', 'department', 'jobTitle', 'employeeAllowances.allowanceType', 'documents', 'leaveRequests']);
 
+        $employeePayslips = PayrollItem::query()
+            ->where('employee_id', $employee->id)
+            ->whereHas('cycle', fn ($q) => $q->where('business_id', $business->id))
+            ->with(['cycle:id,name,year,month,status,finalized_at'])
+            ->orderByDesc('id')
+            ->limit(12)
+            ->get();
+
         return view('hrmanagement::employees.show', [
             'business' => $business,
             'employee' => $employee,
+            'employeePayslips' => $employeePayslips,
             'overviewMetrics' => $this->employeeOverviewMetrics->forEmployee($business, $employee),
             'documentCategories' => EmployeeDocument::CATEGORIES,
             'leaveBalanceSummary' => $this->employeeLeaveBalance->yearlySummary($business, $employee),

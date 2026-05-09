@@ -8,7 +8,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Modules\Business\Models\Branch;
 use Modules\Business\Models\Business;
+use Modules\HRManagement\Models\Employee;
 use Modules\HRManagement\Models\Department;
+use Modules\Modification\Models\Modification;
 use Modules\Transaction\Models\LedgerTransaction;
 
 class Bill extends Model
@@ -42,6 +44,9 @@ class Bill extends Model
         'business_id',
         'rental_property_related',
         'rental_id',
+        'property_id',
+        'employee_id',
+        'modification_id',
         'branch_id',
         'department_id',
         'name',
@@ -88,6 +93,21 @@ class Bill extends Model
     public function rental(): BelongsTo
     {
         return $this->belongsTo(Rental::class);
+    }
+
+    public function property(): BelongsTo
+    {
+        return $this->belongsTo(Property::class);
+    }
+
+    public function employee(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class);
+    }
+
+    public function modification(): BelongsTo
+    {
+        return $this->belongsTo(Modification::class);
     }
 
     public function warehouse(): BelongsTo

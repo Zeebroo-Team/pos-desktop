@@ -495,6 +495,15 @@
                 @if($bill->warehouse)
                     <span class="bill-show__pill"><i class="fa fa-code-branch" aria-hidden="true"></i>{{ $bill->warehouse->name }}</span>
                 @endif
+                @if($bill->property)
+                    <span class="bill-show__pill"><i class="fa fa-building" aria-hidden="true"></i>{{ \Illuminate\Support\Str::limit($bill->property->property_name, 42) }}</span>
+                @endif
+                @if($bill->employee)
+                    <span class="bill-show__pill"><i class="fa fa-user" aria-hidden="true"></i>{{ \Illuminate\Support\Str::limit($bill->employee->full_name, 42) }}</span>
+                @endif
+                @if($bill->modification)
+                    <span class="bill-show__pill"><i class="fa fa-screwdriver-wrench" aria-hidden="true"></i>{{ \Illuminate\Support\Str::limit($bill->modification->name, 42) }}</span>
+                @endif
                 @if($bill->department)
                     <span class="bill-show__pill"><i class="fa fa-users" aria-hidden="true"></i>{{ \Illuminate\Support\Str::limit($bill->department->name, 42) }}</span>
                 @endif
@@ -639,6 +648,24 @@
                             <div class="bill-show__kv">
                                 <dt class="bill-show__dt">Payment</dt>
                                 <dd class="bill-show__dd">{{ $paymentModes[$bill->payment_mode] ?? $bill->payment_mode }}</dd>
+                            </div>
+                            <div class="bill-show__kv">
+                                <dt class="bill-show__dt">Assigned property</dt>
+                                <dd class="{{ $bill->property ? 'bill-show__dd' : 'bill-show__dd bill-show__dd--soft' }}">
+                                    {{ $bill->property?->property_name ?: 'Not assigned' }}
+                                </dd>
+                            </div>
+                            <div class="bill-show__kv">
+                                <dt class="bill-show__dt">Assigned employee</dt>
+                                <dd class="{{ $bill->employee ? 'bill-show__dd' : 'bill-show__dd bill-show__dd--soft' }}">
+                                    {{ $bill->employee?->full_name ?: 'Not assigned' }}
+                                </dd>
+                            </div>
+                            <div class="bill-show__kv">
+                                <dt class="bill-show__dt">Assigned modification</dt>
+                                <dd class="{{ $bill->modification ? 'bill-show__dd' : 'bill-show__dd bill-show__dd--soft' }}">
+                                    {{ $bill->modification?->name ?: 'Not assigned' }}
+                                </dd>
                             </div>
                             @if($bill->description)
                                 <div class="bill-show__kv" style="grid-column:1/-1;">

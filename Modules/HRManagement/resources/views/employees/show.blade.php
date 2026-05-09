@@ -537,11 +537,34 @@
     background:color-mix(in srgb,var(--ov-accent,var(--primary))9%,var(--card));
     border:1px solid color-mix(in srgb,var(--ov-accent,var(--primary))14%,var(--border));
 }
+
+.emp-payslip-list{display:grid;gap:10px;}
+.emp-payslip-card{
+    border:1px solid color-mix(in srgb,var(--border)88%,transparent);
+    border-radius:12px;padding:11px 12px;
+    background:color-mix(in srgb,var(--card)98%,transparent);
+}
+.emp-payslip-card__row{
+    display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:8px 12px;
+}
+.emp-payslip-card__period{margin:0;font-size:14px;font-weight:700;line-height:1.3;color:var(--text);}
+.emp-payslip-card__meta{margin:2px 0 0;font-size:12px;line-height:1.4;color:var(--muted);}
+.emp-payslip-card__actions{display:flex;flex-wrap:wrap;gap:7px;}
+.emp-payslip-card__btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:5px;
+    padding:6px 10px;font-size:12px;font-weight:700;border-radius:8px;text-decoration:none;
+    border:1px solid color-mix(in srgb,var(--primary)38%,var(--border));
+    background:color-mix(in srgb,var(--primary)10%,transparent);color:var(--text);
+}
+.emp-payslip-card__btn:hover{
+    text-decoration:none;background:color-mix(in srgb,var(--primary)16%,transparent);
+}
 </style>
 
 @php
     $overviewMetrics ??= [];
     $bizCurrency = (string) (get_settings('business.currency', '', $business ?? null) ?: '');
+    $employeePayslips ??= collect();
     $empDept = $employee->department;
     $deptSalMin = $empDept?->salary_range_min !== null ? (float) $empDept->salary_range_min : null;
     $deptSalMax = $empDept?->salary_range_max !== null ? (float) $empDept->salary_range_max : null;
@@ -867,6 +890,43 @@
                 @else
                     <p class="emp-show-prose">{{ __('No monthly gross recorded for this person yet. New hires capture basic salary and allowances on create; editing will arrive with Payroll.') }}</p>
                 @endif
+                <section class="emp-show__block" aria-label="{{ __('Payslips') }}" style="margin-top:14px;">
+                    <p class="emp-show-pane-head" style="margin-bottom:10px;">{{ __('Payslips') }}</p>
+                    @if($employeePayslips->isEmpty())
+                        <div class="emp-show-empty">{{ __('No payslips available yet for this employee.') }}</div>
+                    @else
+                        <div class="emp-payslip-list">
+                            @foreach($employeePayslips as $payrollItem)
+                                @php
+                                    $cycle = $payrollItem->cycle;
+                                    $periodLabel = $cycle ? str_pad((string) $cycle->month, 2, '0', STR_PAD_LEFT).'/'.$cycle->year : __('Unknown period');
+                                @endphp
+                                <article class="emp-payslip-card">
+                                    <div class="emp-payslip-card__row">
+                                        <div>
+                                            <p class="emp-payslip-card__period">{{ __('Payroll period: :period', ['period' => $periodLabel]) }}</p>
+                                            <p class="emp-payslip-card__meta">
+                                                {{ __('Cycle') }}: {{ $cycle->name ?? '—' }}
+                                                <span> · </span>{{ __('Net pay') }}: {{ $bizCurrency !== '' ? $bizCurrency.' ' : '' }}{{ number_format((float) ($payrollItem->net_pay ?? 0), 2) }}
+                                                <span> · </span>{{ __('Status') }}: {{ ucfirst((string) ($payrollItem->status ?? '—')) }}
+                                            </p>
+                                        </div>
+                                        @if($cycle)
+                                            <div class="emp-payslip-card__actions">
+                                                <a class="emp-payslip-card__btn" href="{{ route('hr.payroll.cycles.items.payslip', ['cycle' => $cycle, 'item' => $payrollItem]) }}">
+                                                    <i class="fa fa-eye" aria-hidden="true"></i>{{ __('View payslip') }}
+                                                </a>
+                                                <a class="emp-payslip-card__btn" href="{{ route('hr.payroll.cycles.items.payslip.download', ['cycle' => $cycle, 'item' => $payrollItem]) }}">
+                                                    <i class="fa fa-download" aria-hidden="true"></i>{{ __('Download') }}
+                                                </a>
+                                            </div>
+                                        @endif
+                                    </div>
+                                </article>
+                            @endforeach
+                        </div>
+                    @endif
+                </section>
                 @if ($hasDeptSalaryGuide && $empDept)
                     <section class="emp-show__block" aria-label="{{ __('Department salary guide') }}">
                         <div class="emp-show__rows">

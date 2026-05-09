@@ -1,12 +1,34 @@
 @php
     $editing = $editingBill ?? null;
     $departmentsForBill = $departmentsForBill ?? collect();
+    $branchesForBill = $branchesForBill ?? collect();
+    $propertiesForBill = $propertiesForBill ?? collect();
+    $employeesForBill = $employeesForBill ?? collect();
+    $modificationsForBill = $modificationsForBill ?? collect();
     $rentalsForBillLink = $rentalsForBillLink ?? collect();
     $rpRelatedShow = (bool) old('rental_property_related', $editing?->rental_property_related ?? false);
     $pmOld = old('payment_mode', $editing?->payment_mode ?? \Modules\Account\Models\Bill::PAYMENT_MODE_RECURRING);
     $catOld = old('bill_category', $editing?->bill_category ?? \Modules\Account\Models\Bill::CATEGORY_OTHER);
     $varyUsageChecked = filter_var(old('amount_varies_by_usage', $editing?->amount_varies_by_usage ?? false), FILTER_VALIDATE_BOOLEAN);
     $allowSplitChecked = filter_var(old('allow_split_payment', $editing?->allow_split_payment ?? true), FILTER_VALIDATE_BOOLEAN);
+    $assignmentTypeOld = old('assignment_type');
+    if ($assignmentTypeOld === null) {
+        if ($rpRelatedShow) {
+            $assignmentTypeOld = 'rental';
+        } elseif (!empty($editing?->modification_id)) {
+            $assignmentTypeOld = 'modification';
+        } elseif (!empty($editing?->employee_id)) {
+            $assignmentTypeOld = 'employee';
+        } elseif (!empty($editing?->property_id)) {
+            $assignmentTypeOld = 'property';
+        } elseif (!empty($editing?->department_id)) {
+            $assignmentTypeOld = 'department';
+        } elseif (!empty($editing?->branch_id)) {
+            $assignmentTypeOld = 'branch';
+        } else {
+            $assignmentTypeOld = 'none';
+        }
+    }
 @endphp
 @include('account::bills.partials.bill-rental-field-styles')
 @if($errors->any())
@@ -88,14 +110,37 @@
         </div>
     </div>
 
-    @if($business && $departmentsForBill->isNotEmpty())
+    @if($business)
         <div class="rental-form-section">
-            <div class="rental-form-section__head"><i class="fa fa-users" aria-hidden="true"></i> Department</div>
-            <p class="bill-rental-field__lead">Optional — tag this bill for a specific HR department when you organize teams under <strong>HR Management</strong>.</p>
+            <div class="rental-form-section__head"><i class="fa fa-diagram-project" aria-hidden="true"></i> Assignment</div>
+            <p class="bill-rental-field__lead">Choose one assignment target. Then select the matching item from the dropdown.</p>
             <div class="rental-fields-grid">
                 <div class="rental-field rental-field--full">
-                    <label for="bill-department-id">Assign to department</label>
-                    <select id="bill-department-id" name="department_id" class="rental-select">
+                    <label for="bill-assignment-type">Assign to</label>
+                    <select id="bill-assignment-type" name="assignment_type" class="rental-select">
+                        <option value="none" @selected((string) $assignmentTypeOld === 'none')>None</option>
+                        <option value="branch" @selected((string) $assignmentTypeOld === 'branch')>Branch</option>
+                        <option value="department" @selected((string) $assignmentTypeOld === 'department')>Department</option>
+                        <option value="property" @selected((string) $assignmentTypeOld === 'property')>Property</option>
+                        <option value="employee" @selected((string) $assignmentTypeOld === 'employee')>Employee</option>
+                        <option value="modification" @selected((string) $assignmentTypeOld === 'modification')>Modification</option>
+                        <option value="rental" @selected((string) $assignmentTypeOld === 'rental')>Rental property</option>
+                    </select>
+                    @error('assignment_type')<span class="rental-field-err">{{ $message }}</span>@enderror
+                </div>
+                <div class="rental-field rental-field--full" id="bill-assign-branch-wrap" @if((string) $assignmentTypeOld !== 'branch') hidden @endif>
+                    <label for="bill-branch-id">Select branch</label>
+                    <select id="bill-branch-id" name="branch_id" class="rental-select" @if((string) $assignmentTypeOld !== 'branch') disabled @endif>
+                        <option value="">No branch</option>
+                        @foreach($branchesForBill as $branch)
+                            <option value="{{ $branch->id }}" @selected((string) old('branch_id', $editing?->branch_id) === (string) $branch->id)>{{ $branch->name }}</option>
+                        @endforeach
+                    </select>
+                    @error('branch_id')<span class="rental-field-err">{{ $message }}</span>@enderror
+                </div>
+                <div class="rental-field rental-field--full" id="bill-assign-department-wrap" @if((string) $assignmentTypeOld !== 'department') hidden @endif>
+                    <label for="bill-department-id">Select department</label>
+                    <select id="bill-department-id" name="department_id" class="rental-select" @if((string) $assignmentTypeOld !== 'department') disabled @endif>
                         <option value="">No department</option>
                         @foreach($departmentsForBill as $dept)
                             <option value="{{ $dept->id }}" @selected((string) old('department_id', $editing?->department_id) === (string) $dept->id)>{{ $dept->name }}</option>
@@ -103,64 +148,56 @@
                     </select>
                     @error('department_id')<span class="rental-field-err">{{ $message }}</span>@enderror
                 </div>
-            </div>
-        </div>
-    @endif
-
-    @if($business)
-        <div class="rental-form-section bill-location-rental-group">
-            <div class="rental-form-section__head"><i class="fa fa-building" aria-hidden="true"></i> Rental property</div>
-            <p class="bill-rental-field__lead">Group <strong>where</strong> this bill applies and <strong>which rental</strong> (if any) it belongs to: use the branch when your business has multiple locations, then optionally link to a saved rental for rent or property-tied utilities.</p>
-
-            <div class="bill-location-rental-group__branch">
-                @include('account::partials.warehouse-branch-select', [
-                    'presetBranchId' => old('branch_id', $editing?->branch_id),
-                    'fixedBusinessId' => $business->id,
-                    'warehouseSelectClass' => 'rental-select',
-                ])
-                @error('branch_id')<span class="rental-field-err" style="display:block;margin-top:6px;">{{ $message }}</span>@enderror
-            </div>
-
-            <div class="bill-location-rental-group__divider" role="presentation" aria-hidden="true"></div>
-
-            <div class="bill-location-rental-group__rental">
-                @if($rentalsForBillLink->isEmpty())
-                    <div class="bill-rental-empty-note" role="status">
-                        <i class="fa fa-circle-info" aria-hidden="true"></i>
-                        <span>To link this bill to a lease or property, add a rental under <strong>Rentals</strong> from the overview first.</span>
-                    </div>
-                @else
-                    <div class="rental-fields-grid">
-                        <div class="rental-field--full">
-                            <label id="bill-rental-toggle-label" for="bill-rental-related" @class([
-                                'bill-rental-toggle',
-                                'bill-rental-toggle--on' => $rpRelatedShow,
-                            ])>
-                                <span class="bill-rental-toggle__icon" aria-hidden="true"><i class="fa fa-link"></i></span>
-                                <span class="bill-rental-toggle__body">
-                                    <span class="bill-rental-toggle__title">Link to a rental record</span>
-                                    <span class="bill-rental-toggle__desc">Turn on and pick a property below for rent or other rental-specific bills. Leave off for expenses that are not tied to a lease.</span>
-                                </span>
-                                <span class="bill-rental-toggle__control">
-                                    <input type="checkbox" name="rental_property_related" id="bill-rental-related" value="1" @checked($rpRelatedShow)>
-                                </span>
-                            </label>
-                            @error('rental_property_related')<span class="rental-field-err">{{ $message }}</span>@enderror
-                        </div>
-                        <div class="rental-field rental-field--full bill-rental-select-wrap" id="bill-rental-link-wrap" @if(!$rpRelatedShow) hidden @endif>
-                            <label class="bill-rental-select-label" for="bill-rental-id">Which rental</label>
-                            <select id="bill-rental-id" name="rental_id" class="rental-select" @if(!$rpRelatedShow) disabled @endif>
-                                <option value="">Select a rental…</option>
-                                @foreach($rentalsForBillLink as $r)
-                                    <option value="{{ $r->id }}" @selected((string) old('rental_id', $editing?->rental_id) === (string) $r->id)>
-                                        {{ $r->property_type }}@if($r->warehouse) · {{ $r->warehouse->name }}@endif
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('rental_id')<span class="rental-field-err">{{ $message }}</span>@enderror
-                        </div>
-                    </div>
-                @endif
+                <div class="rental-field rental-field--full" id="bill-assign-property-wrap" @if((string) $assignmentTypeOld !== 'property') hidden @endif>
+                    <label for="bill-property-id">Assign to property</label>
+                    <select id="bill-property-id" name="property_id" class="rental-select" @if((string) $assignmentTypeOld !== 'property') disabled @endif>
+                        <option value="">No property</option>
+                        @foreach($propertiesForBill as $prop)
+                            <option value="{{ $prop->id }}" @selected((string) old('property_id', $editing?->property_id) === (string) $prop->id)>
+                                {{ $prop->property_name }} · {{ $prop->property_type }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('property_id')<span class="rental-field-err">{{ $message }}</span>@enderror
+                </div>
+                <div class="rental-field rental-field--full" id="bill-assign-employee-wrap" @if((string) $assignmentTypeOld !== 'employee') hidden @endif>
+                    <label for="bill-employee-id">Assign to employee</label>
+                    <select id="bill-employee-id" name="employee_id" class="rental-select" @if((string) $assignmentTypeOld !== 'employee') disabled @endif>
+                        <option value="">No employee</option>
+                        @foreach($employeesForBill as $emp)
+                            <option value="{{ $emp->id }}" @selected((string) old('employee_id', $editing?->employee_id) === (string) $emp->id)>
+                                {{ $emp->full_name }}@if($emp->employee_id) · {{ $emp->employee_id }}@endif
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('employee_id')<span class="rental-field-err">{{ $message }}</span>@enderror
+                </div>
+                <div class="rental-field rental-field--full" id="bill-assign-modification-wrap" @if((string) $assignmentTypeOld !== 'modification') hidden @endif>
+                    <label for="bill-modification-id">Select modification</label>
+                    <select id="bill-modification-id" name="modification_id" class="rental-select" @if((string) $assignmentTypeOld !== 'modification') disabled @endif>
+                        <option value="">No modification</option>
+                        @foreach($modificationsForBill as $mod)
+                            <option value="{{ $mod->id }}" @selected((string) old('modification_id', $editing?->modification_id) === (string) $mod->id)>
+                                {{ $mod->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('modification_id')<span class="rental-field-err">{{ $message }}</span>@enderror
+                </div>
+                <div class="rental-field rental-field--full" id="bill-assign-rental-wrap" @if((string) $assignmentTypeOld !== 'rental') hidden @endif>
+                    <label for="bill-rental-id">Select rental property</label>
+                    <select id="bill-rental-id" name="rental_id" class="rental-select" @if((string) $assignmentTypeOld !== 'rental') disabled @endif>
+                        <option value="">Select a rental…</option>
+                        @foreach($rentalsForBillLink as $r)
+                            <option value="{{ $r->id }}" @selected((string) old('rental_id', $editing?->rental_id) === (string) $r->id)>
+                                {{ $r->property_type }}@if($r->warehouse) · {{ $r->warehouse->name }}@endif
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('rental_id')<span class="rental-field-err">{{ $message }}</span>@enderror
+                    @error('rental_property_related')<span class="rental-field-err">{{ $message }}</span>@enderror
+                </div>
+                <input type="hidden" name="rental_property_related" id="bill-rental-related-flag" value="{{ (string) $assignmentTypeOld === 'rental' ? '1' : '0' }}">
             </div>
         </div>
     @endif
@@ -316,18 +353,42 @@
     syncPaymentMode();
     syncCategoryOther();
 
-    var rpCb = document.getElementById('bill-rental-related');
-    var rentalWrap = document.getElementById('bill-rental-link-wrap');
-    var rentalSel = document.getElementById('bill-rental-id');
-    var toggleLabel = document.getElementById('bill-rental-toggle-label');
-    function syncRentalLink(){
-        if(!rpCb) return;
-        var on = rpCb.checked;
-        if(toggleLabel) toggleLabel.classList.toggle('bill-rental-toggle--on', on);
-        if(rentalWrap) rentalWrap.hidden = !on;
-        if(rentalSel) rentalSel.disabled = !on;
+    var assignmentTypeSel = document.getElementById('bill-assignment-type');
+    var assignmentBranchWrap = document.getElementById('bill-assign-branch-wrap');
+    var assignmentDepartmentWrap = document.getElementById('bill-assign-department-wrap');
+    var assignmentPropertyWrap = document.getElementById('bill-assign-property-wrap');
+    var assignmentEmployeeWrap = document.getElementById('bill-assign-employee-wrap');
+    var assignmentModificationWrap = document.getElementById('bill-assign-modification-wrap');
+    var assignmentRentalWrap = document.getElementById('bill-assign-rental-wrap');
+    var assignmentBranchSel = document.getElementById('bill-branch-id');
+    var assignmentDepartmentSel = document.getElementById('bill-department-id');
+    var assignmentPropertySel = document.getElementById('bill-property-id');
+    var assignmentEmployeeSel = document.getElementById('bill-employee-id');
+    var assignmentModificationSel = document.getElementById('bill-modification-id');
+    var assignmentRentalSel = document.getElementById('bill-rental-id');
+    var rentalRelatedFlag = document.getElementById('bill-rental-related-flag');
+
+    function syncAssignmentSelection(){
+        if(!assignmentTypeSel) return;
+        var type = assignmentTypeSel.value || 'none';
+
+        if(assignmentBranchWrap) assignmentBranchWrap.hidden = type !== 'branch';
+        if(assignmentDepartmentWrap) assignmentDepartmentWrap.hidden = type !== 'department';
+        if(assignmentPropertyWrap) assignmentPropertyWrap.hidden = type !== 'property';
+        if(assignmentEmployeeWrap) assignmentEmployeeWrap.hidden = type !== 'employee';
+        if(assignmentModificationWrap) assignmentModificationWrap.hidden = type !== 'modification';
+        if(assignmentRentalWrap) assignmentRentalWrap.hidden = type !== 'rental';
+
+        if(assignmentBranchSel) assignmentBranchSel.disabled = type !== 'branch';
+        if(assignmentDepartmentSel) assignmentDepartmentSel.disabled = type !== 'department';
+        if(assignmentPropertySel) assignmentPropertySel.disabled = type !== 'property';
+        if(assignmentEmployeeSel) assignmentEmployeeSel.disabled = type !== 'employee';
+        if(assignmentModificationSel) assignmentModificationSel.disabled = type !== 'modification';
+        if(assignmentRentalSel) assignmentRentalSel.disabled = type !== 'rental';
+
+        if(rentalRelatedFlag) rentalRelatedFlag.value = type === 'rental' ? '1' : '0';
     }
-    rpCb && rpCb.addEventListener('change', syncRentalLink);
-    syncRentalLink();
+    assignmentTypeSel && assignmentTypeSel.addEventListener('change', syncAssignmentSelection);
+    syncAssignmentSelection();
 })();
 </script>

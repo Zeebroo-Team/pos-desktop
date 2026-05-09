@@ -453,7 +453,7 @@ html.wh-intro-html-noscroll,html.wh-intro-html-noscroll body{overflow:hidden;hei
     <div class="card" style="max-width:100%;">
         <h2 style="margin:0 0 8px;">Do you want manage your business expenses?</h2>
         <p class="muted" style="margin:0 0 14px;">Choose expense categories to start tracking your business spending professionally.</p>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;">
+        <div id="overview-expense-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;">
             @if($loanOverviewTooltip && ($loanOverviewTooltip['hasLoans'] ?? false))
             <style>
                 #dash-loan-summary-pop{position:fixed;z-index:220;opacity:0;visibility:hidden;width:min(340px,calc(100vw - 20px));max-height:70vh;overflow:auto;pointer-events:none;
@@ -474,9 +474,9 @@ html.wh-intro-html-noscroll,html.wh-intro-html-noscroll body{overflow:hidden;hei
             </style>
             @endif
             @if($loanOverviewTooltip && ($loanOverviewTooltip['hasLoans'] ?? false))
-            <span id="dash-loan-summary-trigger" style="display:block;margin:0;padding:0;">
+            <span id="dash-loan-summary-trigger" class="overview-tile-item" data-tile-id="expense-loan" style="display:block;margin:0;padding:0;">
             @endif
-            <a href="{{ route('account.loans.index') }}" style="border:1px solid var(--border);border-radius:12px;padding:12px;text-decoration:none;color:inherit;display:block;transition:border-color .2s ease;"
+            <a class="{{ ($loanOverviewTooltip && ($loanOverviewTooltip['hasLoans'] ?? false)) ? '' : 'overview-tile-item' }}" data-tile-id="{{ ($loanOverviewTooltip && ($loanOverviewTooltip['hasLoans'] ?? false)) ? '' : 'expense-loan' }}" href="{{ route('account.loans.index') }}" style="border:1px solid var(--border);border-radius:12px;padding:12px;text-decoration:none;color:inherit;display:block;transition:border-color .2s ease;"
                onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
                 <div style="font-weight:700;"><i class="fa fa-hand-holding-dollar" style="margin-right:6px;"></i>Loan</div>
                 <div class="muted" style="font-size:12px;margin-top:4px;">Track repayments and interest payments.</div>
@@ -484,46 +484,52 @@ html.wh-intro-html-noscroll,html.wh-intro-html-noscroll body{overflow:hidden;hei
             @if($loanOverviewTooltip && ($loanOverviewTooltip['hasLoans'] ?? false))
             </span>
             @endif
-            <a href="{{ route('account.rentals.index') }}" style="border:1px solid var(--border);border-radius:12px;padding:12px;text-decoration:none;color:inherit;display:block;transition:border-color .2s ease;"
+            <a class="overview-tile-item" data-tile-id="expense-rental" href="{{ route('account.rentals.index') }}" style="border:1px solid var(--border);border-radius:12px;padding:12px;text-decoration:none;color:inherit;display:block;transition:border-color .2s ease;"
                onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
                 <div style="font-weight:700;"><i class="fa fa-house" style="margin-right:6px;"></i>Rentenal</div>
                 <div class="muted" style="font-size:12px;margin-top:4px;">Manage office/shop monthly rental costs.</div>
             </a>
-            <a href="{{ route('account.bills.index') }}" style="border:1px solid var(--border);border-radius:12px;padding:12px;text-decoration:none;color:inherit;display:block;transition:border-color .2s ease;"
+            <a class="overview-tile-item" data-tile-id="expense-property" href="{{ route('account.properties.index') }}" style="border:1px solid var(--border);border-radius:12px;padding:12px;text-decoration:none;color:inherit;display:block;transition:border-color .2s ease;"
+               onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+                <div style="font-weight:700;"><i class="fa fa-building" style="margin-right:6px;"></i>Property</div>
+                <div class="muted" style="font-size:12px;margin-top:4px;">Track property and lease-related expenses.</div>
+            </a>
+            <a class="overview-tile-item" data-tile-id="expense-bills" href="{{ route('account.bills.index') }}" style="border:1px solid var(--border);border-radius:12px;padding:12px;text-decoration:none;color:inherit;display:block;transition:border-color .2s ease;"
                onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
                 <div style="font-weight:700;"><i class="fa fa-file-invoice-dollar" style="margin-right:6px;"></i>Bills</div>
                 <div class="muted" style="font-size:12px;margin-top:4px;">Record utility and service bill payments on a schedule.</div>
             </a>
-            <a href="{{ route('hr.onboarding') }}" style="border:1px solid var(--border);border-radius:12px;padding:12px;text-decoration:none;color:inherit;display:block;transition:border-color .2s ease;"
+            <a class="overview-tile-item" data-tile-id="expense-employee-salary" href="{{ route('hr.onboarding') }}" style="border:1px solid var(--border);border-radius:12px;padding:12px;text-decoration:none;color:inherit;display:block;transition:border-color .2s ease;"
                onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
                 <div style="font-weight:700;"><i class="fa fa-users-gear" style="margin-right:6px;"></i>Employee Salary</div>
                 <div class="muted" style="font-size:12px;margin-top:4px;">Start the payroll wizard or say you manage staff outside SociBiz.</div>
             </a>
-            <div style="border:1px solid var(--border);border-radius:12px;padding:12px;">
+            <a class="overview-tile-item" data-tile-id="expense-modification" href="{{ route('modification.index') }}" style="border:1px solid var(--border);border-radius:12px;padding:12px;text-decoration:none;color:inherit;display:block;transition:border-color .2s ease;"
+               onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
                 <div style="font-weight:700;"><i class="fa fa-screwdriver-wrench" style="margin-right:6px;"></i>Modification</div>
                 <div class="muted" style="font-size:12px;margin-top:4px;">Capture renovation or improvement costs.</div>
-            </div>
-            <div style="border:1px solid var(--border);border-radius:12px;padding:12px;">
+            </a>
+            <div class="overview-tile-item" data-tile-id="expense-purchases" style="border:1px solid var(--border);border-radius:12px;padding:12px;">
                 <div style="font-weight:700;"><i class="fa fa-cart-shopping" style="margin-right:6px;"></i>Purchases</div>
                 <div class="muted" style="font-size:12px;margin-top:4px;">Track inventory and business purchases.</div>
             </div>
-            <div style="border:1px solid var(--border);border-radius:12px;padding:12px;">
+            <div class="overview-tile-item" data-tile-id="expense-legal" style="border:1px solid var(--border);border-radius:12px;padding:12px;">
                 <div style="font-weight:700;"><i class="fa fa-scale-balanced" style="margin-right:6px;"></i>Legal</div>
                 <div class="muted" style="font-size:12px;margin-top:4px;">Manage legal and compliance-related fees.</div>
             </div>
-            <div style="border:1px solid var(--border);border-radius:12px;padding:12px;">
+            <div class="overview-tile-item" data-tile-id="expense-transport" style="border:1px solid var(--border);border-radius:12px;padding:12px;">
                 <div style="font-weight:700;"><i class="fa fa-truck" style="margin-right:6px;"></i>Transport</div>
                 <div class="muted" style="font-size:12px;margin-top:4px;">Record logistics and travel expenses.</div>
             </div>
-            <div style="border:1px solid var(--border);border-radius:12px;padding:12px;">
+            <div class="overview-tile-item" data-tile-id="expense-marketing" style="border:1px solid var(--border);border-radius:12px;padding:12px;">
                 <div style="font-weight:700;"><i class="fa fa-bullhorn" style="margin-right:6px;"></i>Marketing</div>
                 <div class="muted" style="font-size:12px;margin-top:4px;">Track campaign and marketing spend.</div>
             </div>
-            <div style="border:1px solid var(--border);border-radius:12px;padding:12px;">
+            <div class="overview-tile-item" data-tile-id="expense-promotions" style="border:1px solid var(--border);border-radius:12px;padding:12px;">
                 <div style="font-weight:700;"><i class="fa fa-gift" style="margin-right:6px;"></i>Promotions</div>
                 <div class="muted" style="font-size:12px;margin-top:4px;">Manage discounts and promo-related costs.</div>
             </div>
-            <div style="border:1px solid var(--border);border-radius:12px;padding:12px;">
+            <div class="overview-tile-item" data-tile-id="expense-other" style="border:1px solid var(--border);border-radius:12px;padding:12px;">
                 <div style="font-weight:700;"><i class="fa fa-layer-group" style="margin-right:6px;"></i>Other Expenses</div>
                 <div class="muted" style="font-size:12px;margin-top:4px;">Capture any uncategorized business expenses.</div>
             </div>
@@ -532,30 +538,32 @@ html.wh-intro-html-noscroll,html.wh-intro-html-noscroll body{overflow:hidden;hei
     <div class="card" style="max-width:100%;margin-top:14px;">
         <h2 style="margin:0 0 8px;">Hows your income?</h2>
         <p class="muted" style="margin:0 0 14px;">Monitor your revenue performance and growth metrics in one place.</p>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;">
-            <div style="border:1px solid var(--border);border-radius:12px;padding:12px;">
+        <div id="overview-income-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;">
+            <div class="overview-tile-item" data-tile-id="income-sales" style="border:1px solid var(--border);border-radius:12px;padding:12px;">
                 <div style="font-weight:700;"><i class="fa fa-chart-line" style="margin-right:6px;"></i>Sales</div>
                 <div class="muted" style="font-size:12px;margin-top:4px;">Track total sales trends and daily performance.</div>
             </div>
-            <div style="border:1px solid var(--border);border-radius:12px;padding:12px;">
+            <div class="overview-tile-item" data-tile-id="income-report" style="border:1px solid var(--border);border-radius:12px;padding:12px;">
                 <div style="font-weight:700;"><i class="fa fa-file-lines" style="margin-right:6px;"></i>Income Report</div>
                 <div class="muted" style="font-size:12px;margin-top:4px;">Review detailed income summaries by period.</div>
             </div>
-            <div style="border:1px solid var(--border);border-radius:12px;padding:12px;">
+            <div class="overview-tile-item" data-tile-id="income-customer-growth" style="border:1px solid var(--border);border-radius:12px;padding:12px;">
                 <div style="font-weight:700;"><i class="fa fa-user-plus" style="margin-right:6px;"></i>Customer Growth</div>
                 <div class="muted" style="font-size:12px;margin-top:4px;">Measure new customer acquisition over time.</div>
             </div>
-            <div style="border:1px solid var(--border);border-radius:12px;padding:12px;">
+            <div class="overview-tile-item" data-tile-id="income-credit-recovery" style="border:1px solid var(--border);border-radius:12px;padding:12px;">
                 <div style="font-weight:700;"><i class="fa fa-money-bill-wave" style="margin-right:6px;"></i>Credit Recovery</div>
                 <div class="muted" style="font-size:12px;margin-top:4px;">Follow outstanding credit collection progress.</div>
             </div>
-            <div style="border:1px solid var(--border);border-radius:12px;padding:12px;">
+            <div class="overview-tile-item" data-tile-id="income-lead-management" style="border:1px solid var(--border);border-radius:12px;padding:12px;">
                 <div style="font-weight:700;"><i class="fa fa-funnel-dollar" style="margin-right:6px;"></i>Lead Management</div>
                 <div class="muted" style="font-size:12px;margin-top:4px;">Track lead pipeline and conversion value.</div>
             </div>
         </div>
     </div>
 @endif
+
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 
 <script>
     const stepBadge = document.getElementById('stepBadge');
@@ -594,6 +602,61 @@ html.wh-intro-html-noscroll,html.wh-intro-html-noscroll body{overflow:hidden;hei
         }
     @endif
 </script>
+@if($business && $hasBankAccountForBusiness)
+<script>
+(function () {
+    if (typeof Sortable === 'undefined') return;
+    const businessId = @json($business?->id);
+    const prefix = 'overview.sort.order.' + String(businessId || 'global') + '.';
+
+    const style = document.createElement('style');
+    style.textContent = [
+        '.overview-tile-item{cursor:grab;}',
+        '.overview-tile-item:active{cursor:grabbing;}',
+        '.overview-sort-ghost{opacity:.6;transform:scale(.99);}',
+        '.overview-sort-chosen{box-shadow:0 8px 22px -14px rgba(0,0,0,.45);}'
+    ].join('');
+    document.head.appendChild(style);
+
+    function saveOrder(gridEl, key) {
+        const ids = Array.from(gridEl.children)
+            .map((el) => el.getAttribute('data-tile-id'))
+            .filter((v) => !!v);
+        localStorage.setItem(prefix + key, JSON.stringify(ids));
+    }
+
+    function applyOrder(gridEl, key) {
+        const raw = localStorage.getItem(prefix + key);
+        if (!raw) return;
+        let ids = [];
+        try { ids = JSON.parse(raw); } catch (e) { return; }
+        if (!Array.isArray(ids)) return;
+        const nodes = Array.from(gridEl.children);
+        const map = new Map(nodes.map((n) => [n.getAttribute('data-tile-id'), n]));
+        ids.forEach((id) => {
+            const node = map.get(id);
+            if (node) gridEl.appendChild(node);
+        });
+    }
+
+    function init(gridId, key) {
+        const grid = document.getElementById(gridId);
+        if (!grid) return;
+        applyOrder(grid, key);
+        Sortable.create(grid, {
+            draggable: '.overview-tile-item',
+            animation: 170,
+            ghostClass: 'overview-sort-ghost',
+            chosenClass: 'overview-sort-chosen',
+            onEnd: function () { saveOrder(grid, key); }
+        });
+    }
+
+    init('overview-expense-grid', 'expense');
+    init('overview-income-grid', 'income');
+})();
+</script>
+@endif
 @if($loanOverviewTooltip && ($loanOverviewTooltip['hasLoans'] ?? false))
 <script>
 (function () {

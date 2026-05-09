@@ -86,6 +86,22 @@
         .menu a.menu-rentals--due{font-weight:650;animation:menu-rental-due-sheen 2.35s ease-in-out infinite;}
         .menu a.menu-rentals--due i{animation:menu-rental-due-icon 1.9s ease-in-out infinite;}
         .menu a.menu-rentals--due.active{animation:menu-rental-due-sheen 2.35s ease-in-out infinite;border-color:color-mix(in srgb,#ef4444 62%,var(--primary));}
+
+        @keyframes menu-payroll-due-sheen{
+            0%,100%{border-color:color-mix(in srgb,#ef4444 42%,var(--border));background:color-mix(in srgb,#ef4444 12%,transparent);color:color-mix(in srgb,var(--text) 88%,#fecaca);}
+            50%{border-color:color-mix(in srgb,#f87171 72%,var(--border));background:color-mix(in srgb,#dc2626 20%,transparent);color:color-mix(in srgb,#fecaca 40%,var(--text));}
+        }
+        @keyframes menu-payroll-due-icon{
+            0%,100%{color:#f87171!important;transform:scale(1);}
+            50%{color:#fecaca!important;transform:scale(1.06);}
+        }
+        .menu a.menu-payroll--due{font-weight:650;animation:menu-payroll-due-sheen 2.35s ease-in-out infinite;}
+        .menu a.menu-payroll--due i{animation:menu-payroll-due-icon 1.9s ease-in-out infinite;}
+        .menu a.menu-payroll--due.active{animation:menu-payroll-due-sheen 2.35s ease-in-out infinite;border-color:color-mix(in srgb,#ef4444 62%,var(--primary));}
+        .menu a.menu-payroll-cycles--due{font-weight:650;animation:menu-payroll-due-sheen 2.35s ease-in-out infinite;}
+        .menu a.menu-payroll-cycles--due i{animation:menu-payroll-due-icon 1.9s ease-in-out infinite;}
+        .menu a.menu-payroll-cycles--due.active{animation:menu-payroll-due-sheen 2.35s ease-in-out infinite;border-color:color-mix(in srgb,#ef4444 62%,var(--primary));}
+
         @keyframes menu-loan-due-dot{
             from{opacity:.72;transform:scale(1);}
             to{opacity:1;transform:scale(1.18);}
@@ -115,6 +131,12 @@
             .menu a.menu-rentals--due{border-color:color-mix(in srgb,#ef4444 55%,var(--border));background:color-mix(in srgb,#ef4444 14%,transparent);}
             .menu a.menu-rentals--due i{color:#f87171!important;}
             .menu-rentals__pulse{animation:none;}
+            .menu a.menu-payroll--due,.menu a.menu-payroll--due i{animation:none;}
+            .menu a.menu-payroll--due{border-color:color-mix(in srgb,#ef4444 55%,var(--border));background:color-mix(in srgb,#ef4444 14%,transparent);}
+            .menu a.menu-payroll--due i{color:#f87171!important;}
+            .menu a.menu-payroll-cycles--due,.menu a.menu-payroll-cycles--due i{animation:none;}
+            .menu a.menu-payroll-cycles--due{border-color:color-mix(in srgb,#ef4444 55%,var(--border));background:color-mix(in srgb,#ef4444 14%,transparent);}
+            .menu a.menu-payroll-cycles--due i{color:#f87171!important;}
         }
         .menu-group-title{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:12px;font-weight:600;background:color-mix(in srgb,var(--primary) 8%,transparent)}
         .submenu{display:flex;flex-direction:column;gap:4px;margin-left:12px;padding-left:8px;border-left:1px dashed color-mix(in srgb,var(--primary) 35%,var(--border))}
@@ -224,12 +246,23 @@
             ? app(\Modules\Account\Services\RentalService::class)->businessHasOverdueRentalPayments($navBusiness)
             : false;
         $showSidebarBillsLink = $navBusiness && $navBusiness->bills()->exists();
+        $showSidebarPropertiesLink = $navBusiness
+            ? \Modules\Account\Models\Property::query()->where('business_id', $navBusiness->id)->exists()
+            : false;
         $sidebarBillDueHighlight = $showSidebarBillsLink && $navBusiness
             ? app(\Modules\Account\Services\BillService::class)->businessHasOverdueBillPayments($navBusiness)
             : false;
         $hrPayrollOptedIn = $navBusiness
             ? (bool) get_settings('hr.payroll.opted_in', false, $navBusiness)
             : false;
+        $sidebarPayrollOverdueHighlight = false;
+        $sidebarPayrollCyclesOverdueHighlight = false;
+        if ($navBusiness && $hrPayrollOptedIn) {
+            $hrSummary = app(\Modules\HRManagement\Services\HrHubSummaryService::class)->forBusiness($navBusiness);
+            $pvoAside = $hrSummary['previous_month_payroll_overdue'] ?? [];
+            $sidebarPayrollOverdueHighlight = is_array($pvoAside) && (($pvoAside['overdue'] ?? false) === true);
+            $sidebarPayrollCyclesOverdueHighlight = $sidebarPayrollOverdueHighlight;
+        }
         $accounts = $navBusiness
             ? \Modules\Account\Models\Account::with(['bankType', 'bank', 'warehouse'])
                 ->where('user_id', auth()->id())
@@ -255,9 +288,12 @@
             $showSidebarLoansLink = false;
             $showSidebarRentalsLink = false;
             $showSidebarBillsLink = false;
+            $showSidebarPropertiesLink = false;
             $sidebarLoanDueHighlight = false;
             $sidebarRentalDueHighlight = false;
             $sidebarBillDueHighlight = false;
+            $sidebarPayrollOverdueHighlight = false;
+            $sidebarPayrollCyclesOverdueHighlight = false;
         }
     @endphp
     @unless($minimalAppShell)
@@ -282,6 +318,12 @@
             <div class="menu-section">Main</div>
             <a href="{{ route('dashboard') }}" class="{{ request()->routeIs('dashboard') ? 'active' : '' }}"><i class="fa fa-gauge-high"></i><span>Overview</span></a>
             <a href="{{ route('aibot.index') }}" class="{{ request()->routeIs('aibot.*') ? 'active' : '' }}"><i class="fa fa-robot"></i><span>AI Agent</span></a>
+            @if(Route::has('modification.index'))
+                <a href="{{ route('modification.index') }}" class="{{ request()->routeIs('modification.*') ? 'active' : '' }}"><i class="fa fa-screwdriver-wrench"></i><span>Modification</span></a>
+            @endif
+            @if($showSidebarPropertiesLink && Route::has('account.properties.index'))
+                <a href="{{ route('account.properties.index') }}" class="{{ request()->routeIs('account.properties.*') ? 'active' : '' }}"><i class="fa fa-building"></i><span>Property</span></a>
+            @endif
             @if($showSidebarLoansLink)
                 <a href="{{ route('account.loans.index') }}" @class([
                     'menu-loan-mgmt',
@@ -321,14 +363,32 @@
                     <i class="fa fa-users-gear"></i><span>HR</span>
                 </div>
                 <div class="submenu">
-                    <a href="{{ route('hr.index') }}" class="{{ request()->routeIs('hr.index') ? 'active' : '' }}"><i class="fa fa-table-list"></i><span>HR hub</span></a>
+                    <a href="{{ route('hr.index') }}" @class([
+                        'active' => request()->routeIs('hr.index'),
+                        'menu-payroll--due' => $sidebarPayrollOverdueHighlight,
+                    ])>
+                        <i class="fa fa-table-list"></i><span>HR hub</span>
+                    </a>
                     <a href="{{ route('hr.employees.index') }}" class="{{ request()->routeIs('hr.employees.*') ? 'active' : '' }}"><i class="fa fa-user-group"></i><span>Employees</span></a>
+                    @if(Route::has('hr.attendance.index'))
+                        <a href="{{ route('hr.attendance.index') }}" class="{{ request()->routeIs('hr.attendance.*') ? 'active' : '' }}"><i class="fa fa-calendar-check"></i><span>Attendance</span></a>
+                    @endif
                     <div class="menu-payroll-nested">
-                        <a href="{{ route('hr.payroll.index') }}" class="{{ request()->routeIs('hr.payroll.*') ? 'active' : '' }}"><i class="fa fa-money-check-dollar"></i><span>{{ __('Payroll') }}</span></a>
+                        <a href="{{ route('hr.payroll.index') }}" @class([
+                            'active' => request()->routeIs('hr.payroll.*'),
+                            'menu-payroll--due' => $sidebarPayrollOverdueHighlight,
+                        ])>
+                            <i class="fa fa-money-check-dollar"></i><span>{{ __('Payroll') }}</span>
+                        </a>
                         <div class="menu-payroll-nested__sub" role="group" aria-label="{{ __('Payroll shortcuts') }}">
                             <a href="{{ route('hr.payroll.regional-template') }}" class="{{ request()->routeIs('hr.payroll.regional-template') ? 'active' : '' }}"><i class="fa fa-globe" aria-hidden="true"></i><span>{{ __('Regional template') }}</span></a>
                             <a href="{{ route('hr.payroll.rule-sets.index') }}" class="{{ request()->routeIs('hr.payroll.rule-sets.*') ? 'active' : '' }}"><i class="fa fa-sliders" aria-hidden="true"></i><span>{{ __('Rule sets') }}</span></a>
-                            <a href="{{ route('hr.payroll.index') }}#phi-cycles-heading" @class(['active' => request()->routeIs('hr.payroll.cycles.*') || request()->routeIs('hr.payroll.index')])><i class="fa fa-calendar-week" aria-hidden="true"></i><span>{{ __('Payroll cycles') }}</span></a>
+                            <a href="{{ route('hr.payroll.index') }}#phi-cycles-heading" @class([
+                                'active' => request()->routeIs('hr.payroll.cycles.*') || request()->routeIs('hr.payroll.index'),
+                                'menu-payroll-cycles--due' => $sidebarPayrollCyclesOverdueHighlight,
+                            ])>
+                                <i class="fa fa-calendar-week" aria-hidden="true"></i><span>{{ __('Payroll cycles') }}</span>
+                            </a>
                         </div>
                     </div>
                     <a href="{{ route('hr.departments.index') }}" class="{{ request()->routeIs('hr.departments.*') ? 'active' : '' }}"><i class="fa fa-folder-tree"></i><span>Departments</span></a>

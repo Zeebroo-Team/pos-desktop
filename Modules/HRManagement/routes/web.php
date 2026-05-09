@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Modules\HRManagement\Http\Controllers\HrAllowanceTypeController;
+use Modules\HRManagement\Http\Controllers\HrAttendanceController;
 use Modules\HRManagement\Http\Controllers\HrBusinessHolidayController;
 use Modules\HRManagement\Http\Controllers\HrComplaintController;
 use Modules\HRManagement\Http\Controllers\HrDepartmentController;
@@ -44,6 +45,9 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::post('hr-management/employees/{employee}/documents', [HrEmployeeController::class, 'storeDocument'])->name('hr.employees.documents.store');
     Route::get('hr-management/employees/{employee}/documents/{document}/download', [HrEmployeeController::class, 'downloadDocument'])->name('hr.employees.documents.download');
     Route::delete('hr-management/employees/{employee}/documents/{document}', [HrEmployeeController::class, 'destroyDocument'])->name('hr.employees.documents.destroy');
+    Route::get('hr-management/attendance', [HrAttendanceController::class, 'index'])->name('hr.attendance.index');
+    Route::post('hr-management/attendance', [HrAttendanceController::class, 'upsert'])->name('hr.attendance.upsert');
+    Route::post('hr-management/attendance/import-excel', [HrAttendanceController::class, 'importExcel'])->name('hr.attendance.import-excel');
     Route::get('hr-management/payroll', [HrPayrollController::class, 'index'])->name('hr.payroll.index');
     Route::get('hr-management/payroll/regional-template', [HrPayrollController::class, 'regionalTemplate'])->name('hr.payroll.regional-template');
     Route::get('hr-management/payroll/rule-sets', [HrPayrollController::class, 'ruleSets'])->name('hr.payroll.rule-sets.index');

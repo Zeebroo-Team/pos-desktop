@@ -7,5 +7,6 @@
     "Transaction": true,
     "HRManagement": true,
     "AIBot": true,
-    "AppConnection": true
+    "AppConnection": true,
+    "Modification": true
 }

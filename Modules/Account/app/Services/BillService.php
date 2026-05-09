@@ -17,7 +17,7 @@ class BillService
     public function listForBusiness(Business $business): Collection
     {
         return Bill::query()
-            ->with(['warehouse', 'rental', 'department', 'deductAccount.bank', 'deductAccount.bankType'])
+            ->with(['warehouse', 'rental', 'property', 'employee', 'modification', 'department', 'deductAccount.bank', 'deductAccount.bankType'])
             ->where('business_id', $business->id)
             ->latest()
             ->get();
@@ -58,6 +58,9 @@ class BillService
                 'business',
                 'warehouse',
                 'rental',
+                'property',
+                'employee',
+                'modification',
                 'department',
                 'deductAccount.bank',
                 'deductAccount.bankType',

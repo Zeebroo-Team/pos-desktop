@@ -4,7 +4,29 @@
     $inboxEmployees = $hrInboxEmployees ?? collect();
     $complaintErrKeys = ['complaint_employee_id', 'complaint_subject', 'complaint_body'];
     $complaintErrs = collect($complaintErrKeys)->flatMap(fn ($k) => $errors->get($k, []));
+    $pvoAside = ($hrSummary ?? [])['previous_month_payroll_overdue'] ?? [];
+    $asidePayrollOverdue = is_array($pvoAside) && (($pvoAside['overdue'] ?? false) === true);
+    $pvoAsideLabel = is_array($pvoAside) ? (string) ($pvoAside['month_label'] ?? '') : '';
 @endphp
+
+@if($asidePayrollOverdue && $pvoAsideLabel !== '')
+    <section class="hr-hub-aside__block hr-hub-aside__block--overdue-payroll" aria-labelledby="hr-aside-overdue-payroll-title">
+        <div class="hr-hub-aside__overdue-payroll-head">
+            <h3 id="hr-aside-overdue-payroll-title" class="hr-hub-aside__overdue-payroll-h">
+                <i class="fa fa-triangle-exclamation" aria-hidden="true"></i>{{ __('Overdue payroll') }}
+            </h3>
+            <span class="hr-hub-aside__overdue-live" aria-live="polite">
+                <span class="hr-hub-aside__overdue-live-dot" aria-hidden="true"></span>{{ __('Attention') }}
+            </span>
+        </div>
+        <p class="hr-hub-aside__overdue-payroll-p">{{ __(':period payroll is still open. Finalize it in Payroll.', ['period' => $pvoAsideLabel]) }}</p>
+        @if(($pvoAside['cycle_id'] ?? null) !== null && Route::has('hr.payroll.cycles.show'))
+            <a href="{{ route('hr.payroll.cycles.show', ['cycle' => $pvoAside['cycle_id']]) }}" class="hr-hub-aside__overdue-payroll-cta">{{ __('Resolve — open cycle') }}</a>
+        @elseif(Route::has('hr.payroll.index'))
+            <a href="{{ route('hr.payroll.index') }}" class="hr-hub-aside__overdue-payroll-cta">{{ __('Go to Payroll') }}</a>
+        @endif
+    </section>
+@endif
 
 <section class="hr-hub-aside__block" aria-labelledby="hr-aside-leave-title">
     <h3 id="hr-aside-leave-title" class="hr-hub-aside__h"><i class="fa fa-plane-departure" aria-hidden="true"></i>{{ __('Leave requests') }}</h3>

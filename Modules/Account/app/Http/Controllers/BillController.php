@@ -15,10 +15,13 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Modules\Account\Models\Account;
 use Modules\Account\Models\Bill;
+use Modules\Account\Models\Property;
 use Modules\Account\Models\Rental;
 use Modules\Account\Services\BillService;
 use Modules\Business\Models\Business;
+use Modules\HRManagement\Models\Employee;
 use Modules\HRManagement\Models\Department;
+use Modules\Modification\Models\Modification;
 use Modules\Transaction\Services\BillManualPaymentSettlementService;
 
 class BillController extends Controller
@@ -56,6 +59,10 @@ class BillController extends Controller
                 ? $this->billService->billOverdueMapForBusiness($business)
                 : [],
             'departmentsForBill' => $business !== null ? $this->departmentsForBillForm($business) : collect(),
+            'branchesForBill' => $business !== null ? $this->branchesForBillForm($business) : collect(),
+            'propertiesForBill' => $business !== null ? $this->propertiesForBillForm($request, $business) : collect(),
+            'employeesForBill' => $business !== null ? $this->employeesForBillForm($business) : collect(),
+            'modificationsForBill' => $business !== null ? $this->modificationsForBillForm($business) : collect(),
         ], $this->warehousesFormContext($request)));
     }
 
@@ -311,6 +318,10 @@ class BillController extends Controller
             'billFormMethod' => 'PATCH',
             'billSubmitLabel' => 'Save changes',
             'departmentsForBill' => $this->departmentsForBillForm($business),
+            'branchesForBill' => $this->branchesForBillForm($business),
+            'propertiesForBill' => $this->propertiesForBillForm($request, $business),
+            'employeesForBill' => $this->employeesForBillForm($business),
+            'modificationsForBill' => $this->modificationsForBillForm($business),
         ], $this->warehousesFormContext($request)));
     }
 
@@ -346,6 +357,9 @@ class BillController extends Controller
         $request->merge([
             'branch_id' => $request->filled('branch_id') ? $request->integer('branch_id') : null,
             'department_id' => $request->filled('department_id') ? $request->integer('department_id') : null,
+            'property_id' => $request->filled('property_id') ? $request->integer('property_id') : null,
+            'employee_id' => $request->filled('employee_id') ? $request->integer('employee_id') : null,
+            'modification_id' => $request->filled('modification_id') ? $request->integer('modification_id') : null,
             'deduct_account_id' => $request->filled('deduct_account_id') ? $request->integer('deduct_account_id') : null,
             'remind_before_days' => $request->filled('remind_before_days') ? $request->integer('remind_before_days') : null,
             'due_date' => $request->filled('due_date') ? $request->input('due_date') : null,
@@ -355,6 +369,7 @@ class BillController extends Controller
             'rental_id' => $request->boolean('rental_property_related') && $request->filled('rental_id')
                 ? $request->integer('rental_id')
                 : null,
+            'assignment_type' => $request->filled('assignment_type') ? (string) $request->input('assignment_type') : null,
         ]);
 
         $departmentIdRules = ['nullable', 'integer'];
@@ -384,6 +399,23 @@ class BillController extends Controller
                 Rule::exists('branches', 'id')->where(fn ($q) => $q->where('business_id', $business->id)),
             ],
             'department_id' => $departmentIdRules,
+            'property_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('properties', 'id')->where(fn ($q) => $q
+                    ->where('business_id', $business->id)
+                    ->where('user_id', $request->user()->id)),
+            ],
+            'employee_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('hr_employees', 'id')->where(fn ($q) => $q->where('business_id', $business->id)),
+            ],
+            'modification_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('modifications', 'id')->where(fn ($q) => $q->where('business_id', $business->id)),
+            ],
             'rental_property_related' => ['boolean'],
             'rental_id' => [
                 Rule::requiredIf(fn () => $request->boolean('rental_property_related')),
@@ -421,7 +453,35 @@ class BillController extends Controller
             'remind_before_days' => ['nullable', 'integer', 'min:0', 'max:366'],
             'due_date' => ['nullable', 'date'],
             'first_installment_due_date' => ['nullable', 'date'],
+            'assignment_type' => ['nullable', Rule::in(['none', 'branch', 'department', 'property', 'employee', 'modification', 'rental'])],
         ]);
+
+        $assignmentType = (string) ($validated['assignment_type'] ?? 'none');
+        if ($assignmentType === '') {
+            $assignmentType = 'none';
+        }
+
+        if ($assignmentType !== 'branch') {
+            $validated['branch_id'] = null;
+        }
+        if ($assignmentType !== 'department') {
+            $validated['department_id'] = null;
+        }
+        if ($assignmentType !== 'property') {
+            $validated['property_id'] = null;
+        }
+        if ($assignmentType !== 'employee') {
+            $validated['employee_id'] = null;
+        }
+        if ($assignmentType !== 'modification') {
+            $validated['modification_id'] = null;
+        }
+        if ($assignmentType === 'rental') {
+            $validated['rental_property_related'] = true;
+        } else {
+            $validated['rental_property_related'] = false;
+            $validated['rental_id'] = null;
+        }
 
         if (! ($validated['rental_property_related'] ?? false)) {
             $validated['rental_id'] = null;
@@ -517,6 +577,9 @@ class BillController extends Controller
             'agreement_valid_until_year',
             'branch_id',
             'department_id',
+            'property_id',
+            'employee_id',
+            'modification_id',
             'rental_property_related',
             'rental_id',
             'deduct_account_id',
@@ -552,5 +615,45 @@ class BillController extends Controller
         }
 
         return $business->departments()->orderBy('name')->orderBy('id')->get();
+    }
+
+    /** @return EloquentCollection<int, Property> */
+    private function propertiesForBillForm(Request $request, Business $business): EloquentCollection
+    {
+        return Property::query()
+            ->where('business_id', $business->id)
+            ->where('user_id', $request->user()->id)
+            ->orderBy('property_name')
+            ->get();
+    }
+
+    /** @return EloquentCollection<int, Employee> */
+    private function employeesForBillForm(Business $business): EloquentCollection
+    {
+        if (! Schema::hasTable('hr_employees')) {
+            return new EloquentCollection([]);
+        }
+
+        return Employee::query()
+            ->where('business_id', $business->id)
+            ->orderBy('full_name')
+            ->orderBy('id')
+            ->get();
+    }
+
+    /** @return EloquentCollection<int, \Modules\Business\Models\Branch> */
+    private function branchesForBillForm(Business $business): EloquentCollection
+    {
+        return $business->branches()->where('is_active', true)->orderBy('name')->orderBy('id')->get();
+    }
+
+    /** @return EloquentCollection<int, Modification> */
+    private function modificationsForBillForm(Business $business): EloquentCollection
+    {
+        return Modification::query()
+            ->where('business_id', $business->id)
+            ->orderBy('name')
+            ->orderBy('id')
+            ->get();
     }
 }
