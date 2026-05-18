@@ -165,7 +165,7 @@
         body.pos-walking-active .pos-online__sale-body,body.pos-walking-active .pos-register__sale-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;}
         body.pos-walking-active .pos-online__sale-panel .pos-online__cart-list,body.pos-walking-active .pos-register__sale-panel .pos-cart-list{flex:1;min-height:60px;max-height:none;}
         body.pos-walking-active .pos-online__body{flex:1;min-height:0;}
-        body.pos-walking-active .pos-online__browse,body.pos-walking-active .pos-register__browse{flex-shrink:0;background:color-mix(in srgb,var(--card) 96%,transparent);border-bottom:1px solid var(--border);}
+        body.pos-walking-active .pos-online__cats-bar,body.pos-walking-active .pos-register__browse{flex-shrink:0;background:color-mix(in srgb,var(--card) 96%,transparent);border-bottom:1px solid var(--border);}
         body.pos-walking-active .pos-online__catalog-main{flex:1;min-height:0;min-width:0;display:flex;flex-direction:column;}
         body.pos-walking-active .pos-online__grid-wrap,body.pos-walking-active .pos-register__catalog .pos-panel__body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;}
         body.pos-walking-active .pos-register__catalog .pos-products{max-height:none;}

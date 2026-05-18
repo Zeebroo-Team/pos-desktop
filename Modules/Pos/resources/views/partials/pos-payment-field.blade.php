@@ -372,6 +372,54 @@ window.initPosPaymentField = function (options) {
     setMethod(getMethod());
     setNumpadTarget(cashInput);
     syncNumpadState(false);
+
+    window.posPaymentApi = {
+        setMethod: setMethod,
+        getMethod: getMethod,
+        focusCash: function () {
+            if (getMethod() !== 'cash') setMethod('cash');
+            cashInput?.focus();
+            setNumpadTarget(cashInput);
+        },
+        focusDiscount: function () {
+            if (!discountInput || discountInput.hidden) return;
+            discountInput.focus();
+            setNumpadTarget(discountInput);
+        },
+        numpadDigit: appendNumpadDigit,
+        numpadBackspace: numpadBackspace,
+        numpadClear: numpadClear,
+        numpadExact: numpadExact,
+        tryComplete: function () {
+            if (!completeBtn || completeBtn.disabled || !checkoutForm) return false;
+            checkoutForm.requestSubmit();
+            return true;
+        },
+    };
+
+    document.addEventListener('keydown', function (e) {
+        const t = e.target;
+        if (!t?.dataset?.posNumpad || e.ctrlKey || e.metaKey || e.altKey) return;
+        if (e.key >= '0' && e.key <= '9') {
+            e.preventDefault();
+            appendNumpadDigit(e.key);
+            return;
+        }
+        if (e.key === '.') {
+            e.preventDefault();
+            appendNumpadDigit('.');
+            return;
+        }
+        if (e.key === 'Backspace') {
+            e.preventDefault();
+            numpadBackspace();
+            return;
+        }
+        if (e.key === 'Delete') {
+            e.preventDefault();
+            numpadClear();
+        }
+    });
 };
 </script>
 @endonce

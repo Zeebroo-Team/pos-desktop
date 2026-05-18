@@ -27,7 +27,7 @@
 .pos-register__catalog-body{flex:1;min-height:0;display:flex;flex-direction:column;}
 .pos-register__sale-head{padding:10px 12px;border-bottom:1px solid var(--border);background:color-mix(in srgb,var(--card) 94%,transparent);}
 .pos-register__sale-head h2{margin:0;font-size:14px;font-weight:800;}
-.pos-register__sale-body{flex:1;min-height:0;overflow:auto;padding:10px 12px;}
+.pos-register__sale-body{flex:1;min-height:0;overflow:auto;padding:10px 12px 8px;}
 .pos-register__browse{padding:10px 12px;border-bottom:1px solid var(--border);background:color-mix(in srgb,var(--card) 94%,transparent);}
 .pos-register__browse-title{margin:0 0 8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);}
 .pos-page:not(.pos-page--walking) .pos-register__catalog{overflow:visible;border:none;background:transparent;}
@@ -76,13 +76,31 @@
 .pos-banner--err{border-color:color-mix(in srgb,#f87171 45%,var(--border));background:color-mix(in srgb,#f87171 8%,transparent);}
 .pos-page:not(.pos-page--walking) .pos-page__scroll{display:contents;}
 body.pos-walking-active .pos-page__scroll{padding:10px;}
+.pos-page__top{display:flex;flex-direction:row;flex-wrap:nowrap;align-items:center;gap:8px;width:100%;min-width:0;}
+.pos-page__top-search{flex:1 1 auto;min-width:0;margin:0;}
+.pos-page__top-search .pos-search{flex-wrap:nowrap;}
+.pos-page__top-search .pos-search input{flex:1 1 auto;min-width:80px;}
+.pos-page__top-actions{display:flex;flex-wrap:nowrap;align-items:center;gap:6px;flex-shrink:0;}
+body.pos-walking-active .pos-page__top-search .pos-search input{padding:6px 8px;font-size:12px;}
+body.pos-walking-active .pos-page__top-search .pos-search button{padding:6px 8px;font-size:10px;}
 </style>
 
 <div class="pos-shell pos-page @if($posWalkingCustomer) pos-page--walking @endif {{ $posShellClass }}">
     <div class="pcat-page-card card" style="max-width:100%;padding:14px;">
-        <div class="pcat-toolbar pos-page__top" style="margin-bottom:12px;align-items:center;">
-            @include('pos::partials.pos-settings-modal', ['posSettings' => $posSettings, 'accounts' => $accounts, 'hasAccounts' => $hasAccounts])
-            @include('pos::partials.walking-customer-toggle')
+        <div class="pcat-toolbar pos-page__top" style="margin-bottom:12px;">
+            <form method="get" action="{{ route('pos.register') }}" class="pos-page__top-search pos-search" id="pos-register-search-form">
+                <input type="search" name="q" id="pos-register-search" value="{{ $search }}" placeholder="Search name or SKU…" autocomplete="off">
+                <button type="submit" aria-label="Search"><i class="fa fa-search"></i></button>
+                @if(filled($search))
+                    <a href="{{ route('pos.register') }}" class="pos-btn" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;" title="Clear">×</a>
+                @endif
+            </form>
+            <div class="pos-page__top-actions">
+                <button type="button" class="pos-btn" data-pos-add-product-open title="Add product" aria-label="Add product"><i class="fa fa-plus"></i></button>
+                @include('pos::partials.pos-settings-modal', ['posSettings' => $posSettings, 'accounts' => $accounts, 'hasAccounts' => $hasAccounts])
+                @include('pos::partials.pos-keyboard-shortcuts')
+                @include('pos::partials.walking-customer-toggle')
+            </div>
         </div>
         @unless($posWalkingCustomer)
             @include('pos::partials.pos-hub-nav')
@@ -106,9 +124,10 @@ body.pos-walking-active .pos-page__scroll{padding:10px;}
         </p>
 
         @if(empty($products))
-            <div class="pos-banner pos-banner--err" role="alert">
+            <div class="pos-banner pos-banner--err" role="alert" data-pos-empty-products-banner>
                 No active products found.
-                <a href="{{ route('product.index') }}" class="pcat-link">Add products</a> and receive stock before using the register.
+                <button type="button" class="pcat-link" style="background:none;border:none;padding:0;cursor:pointer;font:inherit;" data-pos-add-product-open>Add a product</button>
+                or receive stock before using the register.
             </div>
         @endif
 
@@ -116,26 +135,16 @@ body.pos-walking-active .pos-page__scroll{padding:10px;}
             <aside class="pos-three-panel__left pos-panel pos-register__sale-panel" aria-label="Current sale">
                 <div class="pos-register__sale-head">
                     <h2>Current sale</h2>
-                    <button type="button" class="pos-btn" id="pos-clear-cart" hidden>Clear</button>
                 </div>
                 <div class="pos-register__sale-body">
                     <div id="pos-cart-items" class="pos-cart-list">
                         <p class="pos-cart-empty" id="pos-cart-empty">Tap a product to add it to the cart.</p>
                     </div>
                 </div>
+                @include('pos::partials.pos-sale-clear-footer')
             </aside>
 
             <section class="pos-three-panel__center pos-panel pos-register__catalog" aria-label="Product catalog">
-                <div class="pos-register__browse">
-                    <p class="pos-register__browse-title">Browse</p>
-                    <form method="get" action="{{ route('pos.register') }}" class="pos-search">
-                        <input type="search" name="q" value="{{ $search }}" placeholder="Search name or SKU…" autocomplete="off">
-                        <button type="submit"><i class="fa fa-search"></i> Search</button>
-                        @if(filled($search))
-                            <a href="{{ route('pos.register') }}" class="pos-btn" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Clear</a>
-                        @endif
-                    </form>
-                </div>
                 <div class="pos-register__catalog-body">
                 <div class="pos-panel__body">
                     <div class="pos-products" id="pos-products">
@@ -215,6 +224,8 @@ body.pos-walking-active .pos-page__scroll{padding:10px;}
     </div>
 </div>
 
+@include('pos::partials.pos-add-product-modal', ['productUnits' => $productUnits ?? collect(), 'currency' => $currency])
+
 @once
 @include('pos::partials.beep-audio')
 <script>
@@ -244,7 +255,7 @@ body.pos-walking-active .pos-page__scroll{padding:10px;}
 
         if (cart.size === 0) {
             cartEmptyEl.hidden = false;
-            clearBtn.hidden = true;
+            if (clearBtn) clearBtn.disabled = true;
             completeBtn.disabled = true;
             if (cartSummaryEl) cartSummaryEl.hidden = true;
             cartTotalEl.textContent = money(0);
@@ -253,7 +264,7 @@ body.pos-walking-active .pos-page__scroll{padding:10px;}
         }
 
         cartEmptyEl.hidden = true;
-        clearBtn.hidden = false;
+        if (clearBtn) clearBtn.disabled = false;
         if (cartSummaryEl) cartSummaryEl.hidden = false;
 
         let subtotal = 0;
@@ -368,18 +379,60 @@ body.pos-walking-active .pos-page__scroll{padding:10px;}
         }
     });
 
-    clearBtn?.addEventListener('click', function () {
-        cart.clear();
-        renderCart();
-    });
+    clearBtn?.addEventListener('click', clearCart);
 
     discountPercentEl?.addEventListener('input', renderCart);
+
+    function clearCart() {
+        cart.clear();
+        renderCart();
+        document.getElementById('pos-register-search')?.focus();
+    }
+
     window.initPosPaymentField?.({
         currencySuffix: currencySuffix,
         completeBtn: completeBtn,
         checkoutForm: checkoutForm,
     });
+    window.initPosKeyboardShortcuts?.({
+        searchInput: document.getElementById('pos-register-search'),
+        cartItemsEl: cartItemsEl,
+        discountEnabled: discountEnabled,
+        clearCart: clearCart,
+    });
+    window.initPosAddProductModal?.({
+        productsEl: productsEl,
+        productsBySku: {},
+        currencySuffix: currencySuffix,
+        gridVariant: 'register',
+        storeUrl: @json(route('pos.products.store')),
+        onProductAdded: function (btn) {
+            const id = parseInt(btn.dataset.productId, 10);
+            const stock = parseFloat(btn.dataset.stock) || 0;
+            const unitPrice = parseFloat(btn.dataset.unitPrice) || 0;
+            if (stock <= 0) return;
+            const existing = cart.get(id);
+            if (existing) {
+                if (existing.quantity + 1 > stock) return;
+                existing.quantity += 1;
+            } else {
+                cart.set(id, {
+                    id: id,
+                    name: btn.dataset.productName || 'Product',
+                    sku: btn.dataset.productSku || '',
+                    unitPrice: unitPrice,
+                    quantity: 1,
+                    stock: stock,
+                });
+            }
+            renderCart();
+            if (typeof window.playPosBeep === 'function') {
+                window.playPosBeep();
+            }
+        },
+    });
     renderCart();
+    document.getElementById('pos-register-search')?.focus();
 })();
 </script>
 @endonce

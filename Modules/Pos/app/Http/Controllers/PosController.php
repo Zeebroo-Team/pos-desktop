@@ -12,6 +12,7 @@ use Modules\Pos\Models\Sale;
 use Modules\Pos\Services\PosCatalogService;
 use Modules\Pos\Services\PosSettingsService;
 use Modules\Pos\Services\SaleService;
+use Modules\Product\Services\ProductCatalogOptionsService;
 
 class PosController extends Controller
 {
@@ -21,6 +22,7 @@ class PosController extends Controller
         private readonly PosCatalogService $catalog,
         private readonly SaleService $sales,
         private readonly PosSettingsService $posSettings,
+        private readonly ProductCatalogOptionsService $productCatalogOptions,
     ) {
     }
 
@@ -184,9 +186,12 @@ class PosController extends Controller
                 ->first();
         }
 
+        $catalogOptions = $this->productCatalogOptions->optionsForBusiness($business);
+
         return view($view, [
             'business' => $business,
             'currency' => $currency,
+            'productUnits' => $catalogOptions['units'],
             'search' => $search,
             'categoryId' => $categoryId,
             'categories' => $categories,

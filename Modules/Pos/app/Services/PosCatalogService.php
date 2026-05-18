@@ -84,6 +84,27 @@ class PosCatalogService
             ->all();
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    public function productCardForProduct(Product $product): array
+    {
+        $product->loadMissing(['productUnit', 'imageFile', 'categories']);
+        $meta = $this->posMetaForProduct($product);
+
+        return [
+            'id' => (int) $product->id,
+            'name' => $product->name,
+            'sku' => $product->sku,
+            'unit' => $product->productUnit?->name ?: $product->unit,
+            'image_url' => $product->imageUrl(),
+            'unit_sell_price' => $meta['unit_sell_price'],
+            'stock_quantity' => $meta['stock_quantity'],
+            'has_layers' => $meta['has_layers'],
+            'category_ids' => $product->categories->pluck('id')->map(fn ($id) => (int) $id)->all(),
+        ];
+    }
+
     public function findSellableProductBySku(Business $business, string $sku): ?Product
     {
         $term = trim($sku);
