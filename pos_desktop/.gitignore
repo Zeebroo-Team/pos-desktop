@@ -1,9 +1,0 @@
-build/
-cmake-build-*/
-CMakeCache.txt
-CMakeFiles/
-Makefile
-*.user
-*.autosave
-config.json
-.DS_Store

@@ -210,7 +210,7 @@ The web UI remains available; clients can use either session cookies or API toke
 
 ## POS Desktop (Qt)
 
-The **Qt 6 desktop client** lives in the [`pos_desktop`](../../../pos_desktop) git submodule:
+The **Qt 6 desktop client** lives in the [`pos-desktop`](../../../pos-desktop) git submodule:
 
 - Repository: [github.com/Zeebroo-Team/pos-desktop](https://github.com/Zeebroo-Team/pos-desktop)
 - Same REST API as this document
@@ -226,8 +226,8 @@ git submodule update --init --recursive
 ### Work on the desktop app
 
 ```bash
-cd pos_desktop
-# see pos_desktop/README.md for build steps (CMake + Qt 6)
+cd pos-desktop
+# see pos-desktop/README.md for build steps (CMake + Qt 6)
 ```
 
-To bump the pinned submodule commit in Zeebroo: commit inside `pos_desktop`, push to `pos-desktop`, then in the parent repo run `git add pos_desktop` and commit the updated submodule pointer.
+To bump the pinned submodule commit in Zeebroo: commit inside `pos-desktop`, push to `pos-desktop`, then in the parent repo run `git add pos-desktop` and commit the updated submodule pointer.
